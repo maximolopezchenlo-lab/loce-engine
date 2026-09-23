@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+@layer base {
+  /* OBS Overlay Specific: Ensure pure transparency for Browser Sources */
+  html.obs-mode,
+  body.obs-mode,
+  #root.obs-mode {
+    background-color: transparent !important;
+    background: transparent !important;
+    overflow: hidden !important;
+  }
+}
+
+/* Broadcast Text Stroke & Shadows for Chroma/Luma Key and Direct Overlay */
+.broadcast-text {
+  text-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.95),
+    0 0 12px rgba(0, 0, 0, 0.8),
+    -1px -1px 0 #000,  
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000;
+}
+
+/* Kinetic subtitle token fade-in */
+@keyframes captionFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.caption-enter {
+  animation: captionFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Accessible High-Contrast Theme */
+.high-contrast {
+  background-color: #000000 !important;
+  color: #ffff00 !important; /* High-contrast yellow on pure black */
+}
+
+.high-contrast .border-contrast {
+  border-color: #ffff00 !important;
+}
+
+.high-contrast .bg-card-contrast {
+  background-color: #111111 !important;
+}
+
+/* Custom Scrollbar for Audience View */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.4);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.8);
+}
