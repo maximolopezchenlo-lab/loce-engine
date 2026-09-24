@@ -133,7 +133,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   ¡Te damos la bienvenida a LOCE!
                 </span>{" "}
                 Podés usar tu propia clave de <strong>Gemini Live API</strong>,
-                conectar un modelo local <strong>Gemma 2</strong> vía Ollama, o
+                conectar un modelo local <strong>Gemma 4</strong> vía Ollama, o
                 probar el sistema de inmediato en <strong>Modo Demostración</strong>.
               </div>
             </div>

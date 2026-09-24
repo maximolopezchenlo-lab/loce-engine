@@ -301,7 +301,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onOpenSettings }
                 LOCE Production & Orchestration Dashboard
               </h1>
               <p className="text-sm text-slate-400 mt-1">
-                Multi-room audio ingestion, Gemini Live cloud, and on-premise Gemma inference monitoring.
+                Multi-room audio ingestion, Gemini Live cloud, and on-premise Gemma 4 inference monitoring.
               </p>
             </div>
             <div className="flex items-center gap-2">
