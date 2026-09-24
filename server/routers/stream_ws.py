@@ -25,6 +25,8 @@ async def websocket_caption_stream(
     room_id: str,
     lang: Optional[str] = Query(default=None, description="Target language filter (e.g. 'es', 'en')"),
     mode: str = Query(default="all", description="'all' (partials + finals) or 'final'"),
+    api_key: Optional[str] = Query(default=None, description="Optional runtime Gemini API key"),
+    provider: Optional[str] = Query(default=None, description="Optional provider override"),
 ) -> None:
     """Stream live caption events to web clients and broadcast overlays with low latency."""
     # 1. Path traversal & injection validation
@@ -44,7 +46,11 @@ async def websocket_caption_stream(
     room_service = websocket.app.state.room_service
     pubsub_broker = websocket.app.state.pubsub_broker
 
-    room = await room_service.get_or_create_room(room_id)
+    room = await room_service.get_or_create_room(
+        room_id,
+        provider_type=provider,
+        gemini_api_key=api_key,
+    )
     subscriber_id = f"sub-{uuid.uuid4().hex[:8]}"
 
     # Subscribe to broker

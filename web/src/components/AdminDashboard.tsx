@@ -20,12 +20,17 @@ import {
   Search,
   Check,
   Sparkles,
+  Settings,
 } from "lucide-react";
 import { RoomSummary } from "../types";
-
 import { AudioIngestPanel } from "./AudioIngestPanel";
+import { getApiUrl } from "../utils/config";
 
-export const AdminDashboard: React.FC = () => {
+interface AdminDashboardProps {
+  onOpenSettings?: () => void;
+}
+
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onOpenSettings }) => {
 
   const [rooms, setRooms] = useState<RoomSummary[]>([]);
   const [loading, setLoading] = useState(false);
@@ -52,7 +57,7 @@ export const AdminDashboard: React.FC = () => {
   const fetchRooms = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/rooms");
+      const res = await fetch(getApiUrl("/api/rooms"));
       if (res.ok) {
         const data = await res.json();
         setRooms(data.rooms || []);
@@ -76,7 +81,7 @@ export const AdminDashboard: React.FC = () => {
   // Fetch glossary when selected room changes
   useEffect(() => {
     if (!selectedRoomId) return;
-    fetch(`/api/rooms/${selectedRoomId}/glossary`)
+    fetch(getApiUrl(`/api/rooms/${selectedRoomId}/glossary`))
       .then((res) => res.json())
       .then((data) => {
         setGlossaryTerms((data.terms || []).join(", "));
@@ -90,7 +95,7 @@ export const AdminDashboard: React.FC = () => {
     if (!newRoomId.trim()) return;
 
     try {
-      const res = await fetch("/api/rooms", {
+      const res = await fetch(getApiUrl("/api/rooms"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -123,7 +128,7 @@ export const AdminDashboard: React.FC = () => {
       .filter(Boolean);
 
     try {
-      const res = await fetch(`/api/rooms/${selectedRoomId}/glossary`, {
+      const res = await fetch(getApiUrl(`/api/rooms/${selectedRoomId}/glossary`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -144,7 +149,7 @@ export const AdminDashboard: React.FC = () => {
   const handleStartStop = async (roomId: string, currentStatus: string) => {
     const action = currentStatus === "active" ? "stop" : "start";
     try {
-      await fetch(`/api/rooms/${roomId}/${action}`, { method: "POST" });
+      await fetch(getApiUrl(`/api/rooms/${roomId}/${action}`), { method: "POST" });
       fetchRooms();
     } catch (err) {
       console.error(err);
@@ -152,7 +157,7 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const handleExport = (roomId: string, format: string, lang: string) => {
-    const url = `/api/rooms/${roomId}/export/${format}?lang=${lang}`;
+    const url = getApiUrl(`/api/rooms/${roomId}/export/${format}?lang=${lang}`);
     window.open(url, "_blank");
     setExportFeedback((prev) => ({ ...prev, [roomId]: `${format.toUpperCase()} (${lang.toUpperCase()})` }));
     setTimeout(() => {
@@ -203,7 +208,7 @@ export const AdminDashboard: React.FC = () => {
       ];
 
       for (const t of stageTemplates) {
-        await fetch("/api/rooms", {
+        await fetch(getApiUrl("/api/rooms"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -299,14 +304,26 @@ export const AdminDashboard: React.FC = () => {
                 Multi-room audio ingestion, Gemini Live cloud, and on-premise Gemma inference monitoring.
               </p>
             </div>
-            <button
-              onClick={fetchRooms}
-              disabled={loading}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-900 border border-slate-700/80 hover:bg-slate-800 text-sm font-medium transition-all"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-              Refresh
-            </button>
+            <div className="flex items-center gap-2">
+              {onOpenSettings && (
+                <button
+                  onClick={onOpenSettings}
+                  className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-indigo-950/60 border border-indigo-700/60 hover:bg-indigo-900/60 text-indigo-300 text-sm font-medium transition-all shadow-sm"
+                  title="Configurar motor de IA y URL de backend"
+                >
+                  <Settings className="w-4 h-4 text-indigo-400" />
+                  <span>Configuración</span>
+                </button>
+              )}
+              <button
+                onClick={fetchRooms}
+                disabled={loading}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-900 border border-slate-700/80 hover:bg-slate-800 text-sm font-medium transition-all"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+                Refresh
+              </button>
+            </div>
           </div>
 
           {/* Active Inference Engine Telemetry & Selector Badges */}

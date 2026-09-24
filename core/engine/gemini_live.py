@@ -127,37 +127,48 @@ class GeminiLiveProvider(TranscriptionProvider):
 
         # Connect to BidiGenerateContent WebSocket
         uri = f"wss://{GEMINI_LIVE_HOST}{GEMINI_LIVE_PATH}?key={self.api_key}"
-        logger.info(f"Connecting GeminiLiveProvider for room '{config.room_id}'...")
-        self._ws = await websockets.connect(
-            uri,
-            ping_interval=15,
-            ping_timeout=10,
-            max_size=10 * 1024 * 1024,
-        )
+        try:
+            self._ws = await websockets.connect(
+                uri,
+                ping_interval=15,
+                ping_timeout=10,
+                max_size=10 * 1024 * 1024,
+            )
 
-        # 1. Send Handshake Setup message
-        setup_payload = {
-            "setup": {
-                "model": self.model,
-                "generationConfig": {
-                    "responseModalities": ["TEXT"],
-                    "temperature": 0.1,
-                },
-                "systemInstruction": {
-                    "parts": [{"text": self._build_system_instruction(config)}]
-                },
+            # 1. Send Handshake Setup message
+            setup_payload = {
+                "setup": {
+                    "model": self.model,
+                    "generationConfig": {
+                        "responseModalities": ["TEXT"],
+                        "temperature": 0.1,
+                    },
+                    "systemInstruction": {
+                        "parts": [{"text": self._build_system_instruction(config)}]
+                    },
+                }
             }
-        }
-        await self._ws.send(json.dumps(setup_payload))
-        logger.info("Sent Gemini Live Setup payload. Awaiting setupComplete...")
+            await self._ws.send(json.dumps(setup_payload))
+            logger.info("Sent Gemini Live Setup payload. Awaiting setupComplete...")
 
-        # 2. Receive setup confirmation
-        initial_msg = await self._ws.recv()
-        setup_resp = json.loads(initial_msg)
-        if "setupComplete" not in setup_resp:
-            logger.warning(f"Unexpected initial response from Gemini Live: {setup_resp}")
-        else:
-            logger.info("Gemini Live setupComplete handshake established.")
+            # 2. Receive setup confirmation
+            initial_msg = await self._ws.recv()
+            setup_resp = json.loads(initial_msg)
+            if "setupComplete" not in setup_resp:
+                logger.warning(f"Unexpected initial response from Gemini Live: {setup_resp}")
+            else:
+                logger.info("Gemini Live setupComplete handshake established.")
+        except Exception as e:
+            logger.warning(f"Gemini Live connection/handshake failed for room '{config.room_id}': {e}. Provider marked unhealthy.")
+            self._healthy = False
+            self._running = False
+            if self._ws:
+                try:
+                    await self._ws.close()
+                except Exception:
+                    pass
+                self._ws = None
+            return
 
         # 3. Launch background send/receive loops
         self._sender_task = asyncio.create_task(

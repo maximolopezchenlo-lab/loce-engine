@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { CaptionEvent } from "../types";
+import { getWebSocketBaseUrl, getConfig } from "../utils/config";
 
 export type ConnectionState = "connecting" | "connected" | "disconnected" | "error";
 
@@ -35,13 +36,21 @@ export function useCaptionStream({
   const connect = useCallback(() => {
     clearReconnect();
 
-    // Determine WebSocket URL from current host or default backend
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const host = window.location.host;
-    // If running in Vite dev server on 3000, fallback to 8000 if not proxying
-    const wsUrl = `${protocol}//${host}/ws/stream/${roomId}?lang=${encodeURIComponent(
-      lang
-    )}&mode=${encodeURIComponent(mode)}`;
+    // Determine WebSocket URL from dynamic backend configuration
+    const baseUrl = getWebSocketBaseUrl();
+    const cfg = getConfig();
+    const params = new URLSearchParams({
+      lang,
+      mode,
+    });
+    if (cfg.apiKey) {
+      params.set("api_key", cfg.apiKey);
+    }
+    if (cfg.providerMode) {
+      params.set("provider", cfg.providerMode);
+    }
+
+    const wsUrl = `${baseUrl}/ws/stream/${encodeURIComponent(roomId)}?${params.toString()}`;
 
     setConnectionState("connecting");
 

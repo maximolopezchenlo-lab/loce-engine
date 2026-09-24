@@ -7,7 +7,7 @@ import json
 import logging
 import re
 from typing import Optional
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect, status
 
 logger = logging.getLogger("loce.ingest_ws")
 
@@ -23,6 +23,8 @@ async def websocket_audio_ingest(
     room_id: str,
     sample_rate: int = 16000,
     channels: int = 1,
+    api_key: Optional[str] = Query(default=None),
+    provider: Optional[str] = Query(default=None),
 ) -> None:
     """Ingest live PCM audio frames from speakers, OBS, or mock runners."""
     # 1. Path traversal & injection validation
@@ -35,10 +37,14 @@ async def websocket_audio_ingest(
 
     # Access room_service via app state
     room_service = websocket.app.state.room_service
-    await room_service.get_or_create_room(room_id)
+    await room_service.get_or_create_room(
+        room_id,
+        provider_type=provider,
+        gemini_api_key=api_key,
+    )
 
     logger.info(
-        f"Audio ingest client connected to room '{room_id}' (rate={sample_rate}, channels={channels})"
+        f"Audio ingest client connected to room '{room_id}' (rate={sample_rate}, channels={channels}, provider={provider}, has_key={bool(api_key)})"
     )
 
     current_sample_rate = sample_rate
@@ -78,7 +84,15 @@ async def websocket_audio_ingest(
                     if payload.get("type") == "config":
                         current_sample_rate = payload.get("sample_rate", current_sample_rate)
                         current_channels = payload.get("channels", current_channels)
-                        await websocket.send_json({"status": "config_updated"})
+                        new_api_key = payload.get("api_key")
+                        new_provider = payload.get("provider")
+                        if new_api_key or new_provider:
+                            await room_service.configure_room_provider(
+                                room_id,
+                                provider_type=new_provider,
+                                gemini_api_key=new_api_key,
+                            )
+                        await websocket.send_json({"type": "config_ack", "status": "config_updated"})
                     elif payload.get("type") == "ping":
                         await websocket.send_json({"type": "pong"})
                 except json.JSONDecodeError:

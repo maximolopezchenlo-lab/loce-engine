@@ -123,3 +123,30 @@ def test_websocket_audio_ingest_and_stream(client: TestClient):
                 break
 
         assert received_caption is True
+
+
+def test_dynamic_api_key_and_provider_injection_ws(client: TestClient):
+    """Verify runtime API key and provider injection via WebSocket query and config frames."""
+    room_id = "dynamic-cfg-stage"
+
+    # Connect with query param credentials
+    with client.websocket_connect(f"/ws/ingest/{room_id}?api_key=AIzaSy_initial_key&provider=mock") as ingest_ws:
+        # Send dynamic config update frame
+        config_frame = {
+            "type": "config",
+            "api_key": "AIzaSy_runtime_injected_key",
+            "provider": "mock",
+            "sample_rate": 16000,
+            "channels": 1,
+        }
+        ingest_ws.send_text(json.dumps(config_frame))
+        resp = ingest_ws.receive_json()
+        assert resp["type"] == "config_ack"
+        assert resp["status"] == "config_updated"
+
+    # Connect to stream with runtime api_key query param
+    with client.websocket_connect(f"/ws/stream/{room_id}?lang=en&api_key=AIzaSy_runtime_injected_key") as stream_ws:
+        init_msg = stream_ws.receive_json()
+        assert init_msg["type"] == "init"
+        assert init_msg["room_id"] == room_id
+

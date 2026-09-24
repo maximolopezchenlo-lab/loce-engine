@@ -10,6 +10,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { getWebSocketBaseUrl, getConfig, getApiUrl } from "../utils/config";
 
 export type IngestMode = "mic" | "file";
 export type IngestStatus = "DISCONNECTED" | "CONNECTING" | "STREAMING LIVE" | "PAUSED" | "ERROR";
@@ -135,15 +136,22 @@ export function useAudioIngest(options: UseAudioIngestOptions = {}) {
   const liveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
 
-  // Determine WebSocket URL
+  // Determine WebSocket URL with dynamic backend resolution and credentials
   const getWsIngestUrl = useCallback(
     (targetRoom: string) => {
-      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const host =
-        window.location.port === "5173"
-          ? `${window.location.hostname}:8000`
-          : window.location.host;
-      return `${protocol}//${host}/ws/ingest/${targetRoom}?sample_rate=${targetSampleRate}&channels=1`;
+      const baseUrl = getWebSocketBaseUrl();
+      const cfg = getConfig();
+      const params = new URLSearchParams({
+        sample_rate: String(targetSampleRate),
+        channels: "1",
+      });
+      if (cfg.apiKey) {
+        params.set("api_key", cfg.apiKey);
+      }
+      if (cfg.providerMode) {
+        params.set("provider", cfg.providerMode);
+      }
+      return `${baseUrl}/ws/ingest/${encodeURIComponent(targetRoom)}?${params.toString()}`;
     },
     [targetSampleRate]
   );
@@ -392,9 +400,10 @@ export function useAudioIngest(options: UseAudioIngestOptions = {}) {
     async (url = "/fixtures/sample_talk.wav") => {
       try {
         setError(null);
-        const res = await fetch(url);
+        const targetUrl = url.startsWith("http") ? url : getApiUrl(url);
+        const res = await fetch(targetUrl);
         if (!res.ok) {
-          throw new Error(`HTTP ${res.status}: Failed to load ${url}`);
+          throw new Error(`HTTP ${res.status}: Failed to load ${targetUrl}`);
         }
         const buffer = await res.arrayBuffer();
         await decodeAndProcessAudio(buffer, "sample_talk.wav (Demo Fixture)");

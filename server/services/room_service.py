@@ -137,6 +137,66 @@ class RoomService:
         self._rooms: dict[str, RoomSession] = {}
         self._lock = asyncio.Lock()
 
+    async def configure_room_provider(
+        self,
+        room_id: str,
+        provider_type: Optional[str] = None,
+        gemini_api_key: Optional[str] = None,
+    ) -> None:
+        """Reconfigure or dynamically update inference provider and API credentials for a room."""
+        room = self._rooms.get(room_id)
+        if not room:
+            return
+
+        target_provider = provider_type or ("gemini" if gemini_api_key else room.provider_type)
+        if gemini_api_key or (provider_type and provider_type != room.provider_type):
+            logger.info(
+                f"Dynamically configuring room '{room_id}' provider to '{target_provider}' (has_api_key={bool(gemini_api_key)})"
+            )
+            async with room._lock:
+                was_active = (room.status == RoomStatus.ACTIVE)
+                if was_active:
+                    try:
+                        await room.audio_consumer.finish()
+                    except Exception as e:
+                        logger.debug(f"Audio consumer finish notice: {e}")
+                    try:
+                        await room.provider.stop()
+                    except Exception as e:
+                        logger.debug(f"Provider stop notice: {e}")
+
+                room.provider_type = target_provider
+                room.provider = room._create_provider(
+                    provider_type=target_provider,
+                    api_key=gemini_api_key,
+                )
+                room.audio_consumer = AudioConsumer(
+                    provider=room.provider,
+                    sample_rate=room.sample_rate,
+                    chunk_ms=room.chunk_ms,
+                )
+
+                if was_active:
+                    prompt_context = self.glossary.build_prompt_context(room_id)
+                    config = TranscriptionConfig(
+                        room_id=room.room_id,
+                        source_language=room.source_language,
+                        target_languages=room.target_languages,
+                        sample_rate=room.sample_rate,
+                        chunk_ms=room.chunk_ms,
+                        glossary_terms=prompt_context["terms"],
+                        speaker_names=prompt_context["speakers"],
+                    )
+
+                    async def _on_caption_event(event: CaptionEvent) -> None:
+                        await self._handle_caption_emission(room, event)
+
+                    await room.provider.start(config=config, event_callback=_on_caption_event)
+                    room.status = RoomStatus.ACTIVE
+                    logger.info(
+                        f"Room '{room_id}' successfully reconfigured and restarted with provider '{target_provider}'"
+                    )
+
     async def get_or_create_room(
         self,
         room_id: str,
@@ -144,19 +204,28 @@ class RoomService:
         source_language: str = "en",
         target_languages: Optional[list[str]] = None,
         provider_type: Optional[str] = None,
+        gemini_api_key: Optional[str] = None,
     ) -> RoomSession:
-        """Fetch existing room or dynamically initialize a new one."""
+        """Fetch existing room or dynamically initialize a new one with optional runtime credentials."""
         async with self._lock:
             if room_id in self._rooms:
+                room = self._rooms[room_id]
+                if gemini_api_key or (provider_type and provider_type != room.provider_type):
+                    await self.configure_room_provider(
+                        room_id=room_id,
+                        provider_type=provider_type,
+                        gemini_api_key=gemini_api_key,
+                    )
                 return self._rooms[room_id]
 
-            chosen_provider = provider_type or self.default_provider
+            chosen_provider = provider_type or ("gemini" if gemini_api_key else self.default_provider)
             room = RoomSession(
                 room_id=room_id,
                 name=name or f"Room {room_id.upper()}",
                 source_language=source_language,
                 target_languages=target_languages or list(SUPPORTED_LANGUAGES),
                 provider_type=chosen_provider,
+                gemini_api_key=gemini_api_key,
             )
             self._rooms[room_id] = room
 

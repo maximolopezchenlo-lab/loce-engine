@@ -9,20 +9,24 @@ import {
   Layers,
   Sun,
   Moon,
+  Settings,
 } from "lucide-react";
 import { useCaptionStream } from "../hooks/useCaptionStream";
 import { RoomSummary } from "../types";
+import { getApiUrl } from "../utils/config";
 
 interface AudienceViewProps {
   initialRoomId?: string;
   initialLang?: string;
   availableRooms?: RoomSummary[];
+  onOpenSettings?: () => void;
 }
 
 export const AudienceView: React.FC<AudienceViewProps> = ({
   initialRoomId = "main-stage",
   initialLang = "es",
   availableRooms = [],
+  onOpenSettings,
 }) => {
   // Sync with URL query parameters if present
   const [roomId, setRoomId] = useState(() => {
@@ -369,7 +373,7 @@ export const AudienceView: React.FC<AudienceViewProps> = ({
               {/* Download Transcripts */}
               <div className="flex items-center gap-1">
                 <a
-                  href={`/api/rooms/${roomId}/export/srt?lang=${lang}`}
+                  href={getApiUrl(`/api/rooms/${roomId}/export/srt?lang=${lang}`)}
                   download
                   className={`px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1 transition-all ${
                     isHighContrast
@@ -384,7 +388,7 @@ export const AudienceView: React.FC<AudienceViewProps> = ({
                   <span>SRT</span>
                 </a>
                 <a
-                  href={`/api/rooms/${roomId}/export/vtt?lang=${lang}`}
+                  href={getApiUrl(`/api/rooms/${roomId}/export/vtt?lang=${lang}`)}
                   download
                   className={`px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1 transition-all ${
                     isHighContrast
@@ -398,6 +402,26 @@ export const AudienceView: React.FC<AudienceViewProps> = ({
                   <Download className="w-3.5 h-3.5" />
                   <span>VTT</span>
                 </a>
+
+                {/* Settings Modal trigger button */}
+                {onOpenSettings && (
+                  <button
+                    type="button"
+                    onClick={onOpenSettings}
+                    className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all ${
+                      isHighContrast
+                        ? "border-yellow-300 text-yellow-300 hover:bg-yellow-300 hover:text-black"
+                        : isLight
+                        ? "border-indigo-300 bg-indigo-50/80 hover:bg-indigo-100 text-indigo-700 shadow-sm"
+                        : "border-indigo-700/60 bg-indigo-950/40 hover:bg-indigo-900/60 text-indigo-300 hover:text-white"
+                    }`}
+                    title="Configuración de IA y Backend"
+                    aria-label="Abrir modal de configuración"
+                  >
+                    <Settings className="w-3.5 h-3.5 text-indigo-400" />
+                    <span className="hidden md:inline">Configuración</span>
+                  </button>
+                )}
               </div>
 
               {/* Desktop Connection & Latency Badge */}
