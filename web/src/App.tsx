@@ -68,9 +68,13 @@ export function App() {
   }
 
   // 3. Audience View (Default)
+  const searchParams = new URLSearchParams(window.location.search);
+  const initialRoomId = searchParams.get("room") || "main-stage";
+  const initialLang = searchParams.get("lang") || "es";
+
   return (
     <div>
-      <AudienceView initialRoomId="main-stage" availableRooms={rooms} />
+      <AudienceView initialRoomId={initialRoomId} initialLang={initialLang} availableRooms={rooms} />
       {/* Quick link to admin dashboard in footer */}
       <footer className="py-4 text-center text-xs text-slate-600 bg-slate-950 border-t border-slate-900">
         <a

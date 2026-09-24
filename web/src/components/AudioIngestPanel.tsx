@@ -44,6 +44,19 @@ export const AudioIngestPanel: React.FC<AudioIngestPanelProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Broadcast VU Meter Peak Hold indicator with smooth decay
+  const [peakLevel, setPeakLevel] = React.useState(0);
+  React.useEffect(() => {
+    if (state.volumeLevel > peakLevel) {
+      setPeakLevel(state.volumeLevel);
+    } else if (peakLevel > state.volumeLevel) {
+      const decayTimer = setTimeout(() => {
+        setPeakLevel((p) => Math.max(state.volumeLevel, p - 2));
+      }, 50);
+      return () => clearTimeout(decayTimer);
+    }
+  }, [state.volumeLevel, peakLevel]);
+
   // Sync external selectedRoomId if user clicks room table
   React.useEffect(() => {
     if (selectedRoomId && selectedRoomId !== state.roomId) {
@@ -352,30 +365,58 @@ export const AudioIngestPanel: React.FC<AudioIngestPanelProps> = ({
         </div>
       )}
 
-      {/* Reactive VU Meter (Volume RMS Level) */}
-      <div className="mt-5 space-y-1.5">
+      {/* Reactive VU Meter (Broadcast RMS Level & Peak Hold) */}
+      <div className="mt-5 space-y-2">
         <div className="flex justify-between items-center text-xs">
           <span className="font-semibold text-slate-300 flex items-center gap-1.5">
             <Volume2 className="w-3.5 h-3.5 text-indigo-400" />
-            Nivel de Entrada (VU Meter)
+            Nivel de Entrada Broadcast (VU Meter)
           </span>
-          <span className="font-mono text-[11px] text-slate-400">
-            {state.volumeLevel}% RMS
-          </span>
+          <div className="flex items-center gap-2 font-mono text-[11px]">
+            {state.volumeLevel >= 90 && (
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-rose-600 text-white animate-pulse shadow-sm shadow-rose-600/50">
+                CLIP
+              </span>
+            )}
+            <span className="text-slate-400">
+              Peak: <strong className="text-slate-200">{peakLevel}%</strong>
+            </span>
+            <span className="text-slate-600">|</span>
+            <span className={state.volumeLevel > 80 ? "text-amber-400 font-bold" : "text-emerald-400 font-semibold"}>
+              {state.volumeLevel}% RMS
+            </span>
+          </div>
         </div>
 
-        {/* Level Bar */}
-        <div className="h-3 w-full bg-slate-900 rounded-full border border-slate-800 overflow-hidden p-0.5">
+        {/* Level Bar Container with Peak Marker */}
+        <div className="relative h-4 w-full bg-slate-950 rounded-lg border border-slate-800/90 overflow-hidden p-0.5 shadow-inner">
+          {/* Subtle LED Segment Guides */}
+          <div className="absolute inset-0.5 rounded-md bg-slate-900/60" />
+
+          {/* Full Scale Broadcast Gradient with Clip-Path Reveal (0-100% full spectrum) */}
           <div
-            className={`h-full rounded-full transition-all duration-75 ease-out ${
-              state.volumeLevel > 85
-                ? "bg-gradient-to-r from-emerald-500 via-amber-400 to-rose-500"
-                : state.volumeLevel > 50
-                ? "bg-gradient-to-r from-emerald-500 to-amber-400"
-                : "bg-emerald-500"
-            }`}
-            style={{ width: `${Math.max(2, state.volumeLevel)}%` }}
+            className="vu-meter-clip h-full rounded-md bg-gradient-to-r from-emerald-500 via-amber-400 to-rose-500 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+            style={{
+              clipPath: `inset(0 ${Math.max(0, 100 - state.volumeLevel)}% 0 0 round 4px)`,
+            }}
           />
+
+          {/* Peak Hold Marker Needle */}
+          {peakLevel > 2 && (
+            <div
+              className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_8px_rgba(255,255,255,0.95)] transition-all duration-75 pointer-events-none rounded-full"
+              style={{ left: `calc(${Math.min(99, peakLevel)}% - 2px)` }}
+            />
+          )}
+        </div>
+
+        {/* Broadcast dB Scale Markers */}
+        <div className="flex justify-between items-center text-[10px] font-mono text-slate-500 px-0.5 select-none">
+          <span>-40 dB</span>
+          <span>-24 dB</span>
+          <span className="text-emerald-500/80">-12 dB</span>
+          <span className="text-amber-500/80">-6 dB</span>
+          <span className="text-rose-500/80 font-semibold">0 dB (CLIP)</span>
         </div>
       </div>
 
