@@ -1,0 +1,24 @@
+version: "3.8"
+
+services:
+  loce-core:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: loce-core
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - HOST=0.0.0.0
+      - DEFAULT_PROVIDER=${DEFAULT_PROVIDER:-mock}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - REDIS_URL=${REDIS_URL:-}
+      - GEMMA_BASE_URL=${GEMMA_BASE_URL:-http://localhost:11434}
+      - GEMMA_MODEL=${GEMMA_MODEL:-gemma2:2b}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3

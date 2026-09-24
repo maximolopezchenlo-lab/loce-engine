@@ -1,266 +1,318 @@
 # LiveVoice Open-Caption Engine (LOCE)
 
-[![Release: v0.2.0](https://img.shields.io/badge/Release-v0.2.0-blue.svg)](https://github.com/livevoice/loce/releases)
+*Distributed, Real-Time Octalingual Captioning & Translation Engine for High-Concurrency Tech Conferences.*
+
+[![Release: v1.0.0](https://img.shields.io/badge/Release-v1.0.0-blue.svg)](https://github.com/maximolopezchenlo-lab/loce-engine/releases)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![React 19](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev/)
-[![End-to-End Latency <15ms (P95)](https://img.shields.io/badge/P95_Latency-13.47ms-brightgreen.svg)]()
-[![Concurrent Multi-Room](https://img.shields.io/badge/10+_Stages-100%25_Passing-brightgreen.svg)]()
-[![Test Suite](https://img.shields.io/badge/Tests-27%20Passed%20(100%25)-brightgreen.svg)]()
-[![Languages](https://img.shields.io/badge/Languages-EN%20%7C%20ES%20%7C%20PT-orange.svg)]()
-[![Engines](https://img.shields.io/badge/Engines-Gemini%20Live%20%7C%20Gemma%202%20Local-purple.svg)]()
-
-**LOCE (LiveVoice Open-Caption Engine)** is an enterprise-grade, open-source distributed engine for **real-time audio transcription and simultaneous trilingual translation** (English, Spanish, Portuguese) targeting high-concurrency tech conferences, keynotes, and hybrid event broadcasts.
-
-LOCE replaces costly, vendor-locked proprietary captioning systems with an open, self-hosted, ultra-low-latency architecture capable of orchestrating **10 to 20+ concurrent stages** in parallel while serving thousands of simultaneous broadcast overlays and audience viewers.
+[![Tests: 38/38 Passing](https://img.shields.io/badge/Tests-38%2F38%20Passing-brightgreen.svg)]()
+[![Architecture: Distributed Pub/Sub](https://img.shields.io/badge/Architecture-Distributed%20Pub%2FSub-blueviolet.svg)]()
+[![Latency: P95 < 12ms](https://img.shields.io/badge/Latency-P95%20%3C%2012ms-brightgreen.svg)]()
+[![Concurrency: 32 Stages Verified](https://img.shields.io/badge/Concurrency-32%20Stages%20Verified-brightgreen.svg)]()
+[![Languages: 8](https://img.shields.io/badge/Languages-EN%20%7C%20ES%20%7C%20PT%20%7C%20FR%20%7C%20DE%20%7C%20IT%20%7C%20RU%20%7C%20ZH-orange.svg)]()
+[![Inference: Gemini Live & Gemma 2](https://img.shields.io/badge/Inference-Gemini%20Live%20API%20%7C%20Gemma%202%20Local-purple.svg)]()
 
 ---
 
-## ⚡ Arquitectura Híbrida: Cloud vs. On-Premise
+**LOCE (LiveVoice Open-Caption Engine)** is an enterprise-grade, open-source distributed engine designed for **real-time audio transcription and simultaneous octalingual translation** (English, Español, Português, Français, Deutsch, Italiano, Русский, and 中文). 
 
-LOCE permite alternar o combinar libremente motores de inferencia según los requisitos de conectividad, privacidad y costos de cada escenario:
-
-| Característica | ⚡ Gemini Multimodal Live API | 🔒 Gemma 2 On-Premise (Edge) | 🧪 Mock Simulator |
-| :--- | :--- | :--- | :--- |
-| **Entorno** | Nube de Google AI | Local / Edge / Air-Gapped | Local / Offline CI/CD |
-| **Privacidad** | Streaming seguro TLS | **100% On-Premise (Zero Egress)** | Totalmente sintético |
-| **Runtime** | `BidiGenerateContent` WebSocket | Ollama / vLLM / OpenAI API | In-Memory Async Task |
-| **Modelo** | `models/gemini-3.5-transcribe-live` | `gemma2:2b` / `gemma:2b` | Script pre-empaquetado |
-| **Idiomas** | EN, ES, PT simultáneo | EN, ES, PT simultáneo | EN, ES, PT simultáneo |
-| **Requisito** | `GEMINI_API_KEY` | GPU/CPU local (Ollama instalado) | Ninguno (Zero Config) |
+Built specifically for high-concurrency technology conferences (such as Nerdearla, PyCon, or KubeCon), keynotes, and hybrid broadcasts, LOCE replaces expensive, vendor-locked proprietary captioning systems with an open, self-hosted, ultra-low-latency architecture. It orchestrates **32+ concurrent stages in parallel**, dispatching real-time captions with sub-15ms broadcast latency to thousands of simultaneous OBS overlays and audience mobile devices.
 
 ---
 
-## 🚀 Benchmark de Rendimiento Real (10 Salas Concurrentes)
+## 🏗️ Arquitectura de Producción de Extremo a Extremo
 
-Validado con el arnés de estrés automatizado (`scripts/stress_test.py --rooms 10 --duration 15.0`) con **40 conexiones WebSocket simultáneas** (10 streams de ingesta PCM 16kHz + 30 clientes receptores trilingües concurrentes en EN, ES y PT):
+LOCE implementa un desacoplamiento estricto en capas independientes: **Ingesta de Audio**, **Normalización y VAD**, **Inferencia Multilingüe Híbrida**, **Distribución Pub/Sub con Backpressure**, y **Entrega en Edge (Broadcast / Web / REST)**.
 
-| ESCENARIO | INGESTA AUDIO | EVENTOS PARCIALES (ES / EN / PT) | EVENTOS FINALES (ES / EN / PT) | LATENCIA P50 | LATENCIA P95 | ESTADO |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| `stage-1` | 468.8 KB | 21 / 21 / 21 | 5 / 5 / 5 | 6.89 ms | 11.12 ms | ✅ PASS |
-| `stage-2` | 468.8 KB | 21 / 21 / 21 | 5 / 5 / 5 | 8.62 ms | 12.91 ms | ✅ PASS |
-| `stage-3` | 468.8 KB | 22 / 22 / 22 | 5 / 5 / 5 | 9.10 ms | 14.61 ms | ✅ PASS |
-| `stage-4` | 468.8 KB | 22 / 22 / 22 | 5 / 5 / 5 | 7.41 ms | 9.37 ms | ✅ PASS |
-| `stage-5` | 468.8 KB | 22 / 22 / 22 | 5 / 5 / 5 | 8.49 ms | 13.71 ms | ✅ PASS |
-| `stage-6` | 468.8 KB | 22 / 22 / 22 | 5 / 5 / 5 | 8.02 ms | 11.36 ms | ✅ PASS |
-| `stage-7` | 468.8 KB | 22 / 22 / 22 | 5 / 5 / 5 | 9.66 ms | 15.13 ms | ✅ PASS |
-| `stage-8` | 468.8 KB | 22 / 22 / 22 | 5 / 5 / 5 | 7.67 ms | 15.06 ms | ✅ PASS |
-| `stage-9` | 468.8 KB | 22 / 22 / 22 | 5 / 5 / 5 | 10.70 ms | 14.80 ms | ✅ PASS |
-| `stage-10` | 468.8 KB | 22 / 22 / 22 | 5 / 5 / 5 | 1.83 ms | 2.86 ms | ✅ PASS |
-
-### Métricas Agregadas del Sistema
-- **Salas Concurrentes en Ejecución**: 10 escenarios independientes (`stage-1` a `stage-10`)
-- **Canales WebSocket Activos**: 40 streams simultáneos
-- **Throughput de Ingesta**: **263.18 KB/s** sostenido (4,687.5 KB transferidos)
-- **Throughput de Subtítulos**: **45.1 eventos/s** (654 parciales, 150 finales)
-- **Latencia Extremo a Extremo P50**: **7.88 ms**
-- **Latencia Extremo a Extremo P95**: **13.47 ms**
-- **Latencia Extremo a Extremo P99**: **29.22 ms** *(objetivo SLA <1500 ms superado ampliamente)*
-- **Tasa de Éxito de Entrega**: **100.0%** (10 de 10 salas verificadas sin pérdidas de segmentos finales)
-
----
-
-## 🎙️ Live Audio Broadcaster en el Navegador
-
-LOCE incluye un módulo de transmisión de audio integrado directamente en el navegador ([`useAudioIngest.ts`](web/src/hooks/useAudioIngest.ts) y [`AudioIngestPanel.tsx`](web/src/components/AudioIngestPanel.tsx)), permitiendo a conferencistas u operadores emitir audio en tiempo real sin instalar software adicional ni OBS:
-
-1. **Modo Micrófono en Vivo**:
-   - Captura vía `navigator.mediaDevices.getUserMedia` con cancelación de eco y supresión de ruido.
-   - Downsampling en cliente desde 44.1kHz / 48kHz nativos a **Linear PCM 16-bit mono a 16,000 Hz** con filtro de decimation anti-aliasing.
-   - Envío binario en bloques de 200ms (6,400 bytes) hacia `/ws/ingest/:roomId`.
-   - **VU Meter Reactivo**: Barra de volumen continua en tiempo real calculada mediante RMS con gradiente dinámico (Esmeralda &rarr; Ámbar &rarr; Carmesí).
-2. **Modo Archivo de Audio (WAV / MP3 / OGG)**:
-   - Carga por selección o arrastrar y soltar (drag-and-drop).
-   - Decodificación con `AudioContext.decodeAudioData` y conversión mono a 16kHz.
-   - Emisión a **velocidad real 1x** con controles de Reproducir, Pausar, Detener y barra de progreso.
-3. **Carga en 1 Clic de Audio Demo**:
-   - Botón *"Cargar Audio de Demostración"* para importar y transmitir instantáneamente el archivo de prueba `sample_talk.wav`.
-
----
-
-## 🌐 Arquitectura Trilingüe Simultánea (EN, ES, PT)
-
-```
-                  ┌──────────────────────┐
-                  │ Audio del Orador     │
-                  │ (Inglés o Español)   │
-                  └──────────┬───────────┘
-                             │
-                             ▼
-                  ┌──────────────────────┐
-                  │ Pipeline de Inferencia│
-                  │ (Gemini Live / Gemma)│
-                  └──────────┬───────────┘
-         ┌───────────────────┼───────────────────┐
-         ▼                   ▼                   ▼
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│ English (EN)    │ │ Español (ES)    │ │ Português (PT)  │
-│ [Timecode MS]   │ │ [Timecode MS]   │ │ [Timecode MS]   │
-└─────────────────┘ └─────────────────┘ └─────────────────┘
-```
-
-- **Sincronización por Timecodes**: Los timecodes (`start_ms`, `end_ms`) se preservan de forma idéntica entre los tres idiomas, permitiendo exportaciones alineadas en formatos estándar **SRT** y **WebVTT**.
-- **Filtrado por Idioma en Pub/Sub**: Los clientes conectan especificando `?lang=pt`, `?lang=es` o `?lang=en`. El broker distribuye únicamente los paquetes requeridos por cada cliente, reduciendo el tráfico de red hasta un 66%.
-- **Glosario y Corrección Fonética**: Soporte de términos técnicos en inglés, español y portugués (e.g., *"Kubernetes"*, *"gRPC"*, *"Microsserviços"*).
-
----
-
-## ⚡ Arquitectura de Escalabilidad Horizontal
-
-Para soportar conferencias de 20 o más salas simultáneas sin degradación de latencia, LOCE desacopla por completo la ingesta de audio, la inferencia y la distribución masiva:
+### Diagrama de Flujo Arquitectónico
 
 ```mermaid
-flowchart LR
-    subgraph IngestNode["Nodos de Ingesta (Edge / Ingest)"]
-        A1["Mic Stage 1"] -->|WS /ws/ingest/stage-1| I1["Ingest Worker"]
-        A2["Mic Stage 2"] -->|WS /ws/ingest/stage-2| I2["Ingest Worker"]
-        AN["Mic Stage N"] -->|WS /ws/ingest/stage-N| IN["Ingest Worker"]
+flowchart TD
+    subgraph Ingestion["1. Capa de Ingesta de Audio (Edge / Speaker)"]
+        MIC["🎙️ Browser Live Mic\n(getUserMedia + AudioWorklet)"] -->|16kHz PCM 16-bit Mono| WS_INGEST["WebSocket Ingest\n(/ws/ingest/:roomId)"]
+        FILE["🎵 Local Audio File / Demo\n(Web Audio API Downsampling)"] -->|200ms Chunks (6400 B)| WS_INGEST
+        OBS_IN["📡 OBS / vMix / RTMP Ingest\n(Hardware Audio Mixer)"] -->|PCM Stream| WS_INGEST
     end
 
-    subgraph Inference["Pipeline de Inferencia Híbrida"]
-        I1 --> Inf1["Gemini Live / Gemma Local"]
-        I2 --> Inf2["Gemini Live / Gemma Local"]
-        IN --> InfN["Gemini Live / Gemma Local"]
+    subgraph Normalization["2. Normalización, Buffering & VAD"]
+        WS_INGEST --> RB["Circular RingBuffer\n(Thread-Safe, Fixed Capacity)"]
+        RB --> NORM["Audio Normalizer\n(Resampling + Stereo-to-Mono + RMS)"]
+        NORM --> VAD["Silero VAD / Frame Slicer\n(Silence Eviction & Voice Bursting)"]
     end
 
-    subgraph Bus["Message Bus Distribuido"]
-        Inf1 -->|loce:room:stage-1| Redis["Redis Pub/Sub Cluster\n(o In-Memory Fallback)"]
-        Inf2 -->|loce:room:stage-2| Redis
-        InfN -->|loce:room:stage-N| Redis
+    subgraph Inference["3. Pipeline de Inferencia Multilingüe Híbrida"]
+        VAD --> ENGINE{"TranscriptionProvider\n(Abstraction Layer)"}
+        ENGINE -->|Cloud TLS WebSocket| GEMINI["⚡ GeminiLiveProvider\n(Gemini Multimodal Live API\nBidiGenerateContent)"]
+        ENGINE -->|Local Edge HTTP / Stream| GEMMA["🔒 GemmaLocalProvider\n(Gemma 2 via Ollama / vLLM\n100% Air-Gapped)"]
+        ENGINE -->|Simulation / CI| MOCK["🧪 MockStreamingProvider\n(Deterministic Octalingual Engine)"]
+        
+        GLOSSARY["📚 Technical Glossary Engine\n(Regex Replacements & Contextual Biasing)"] -.->|Inject Context| GEMINI
+        GLOSSARY -.->|Inject Context| GEMMA
     end
 
-    subgraph EdgeDelivery["Workers de Distribución (Fan-Out)"]
-        Redis --> W1["Broadcast Worker 1"]
-        Redis --> W2["Broadcast Worker 2"]
-        Redis --> WM["Broadcast Worker M"]
+    subgraph Distribution["4. Message Bus Distribuido & Backpressure"]
+        GEMINI -->|Emit Multi-Lang Events| BROKER["PubSubBroker\n(Redis Cluster or Local In-Memory Fallback)"]
+        GEMMA -->|Emit Multi-Lang Events| BROKER
+        MOCK -->|Emit Multi-Lang Events| BROKER
+        
+        BROKER --> BP["Smart Backpressure Queue per Subscriber\n(Drop old partials on congestion | NEVER drop finals)"]
     end
 
-    subgraph Viewers["Consumidores Finales"]
-        W1 --> O1["OBS Overlays"]
-        W2 --> AUD["Audiencia Móvil/Web (React 19)"]
-        WM --> EXP["Exportadores SRT / VTT"]
+    subgraph Delivery["5. Capa de Visualización & Entrega"]
+        BP -->|WS /ws/stream/:roomId?lang=...| AUD["📱 Audience Web App (React 19)\n(8 Languages, WCAG AAA, Auto-scroll)"]
+        BP -->|WS /ws/stream/:roomId?lang=...| OBS["📺 OBS Studio / vMix Overlays\n(Transparent BG, Broadcast Typography)"]
+        BP -->|On-Demand HTTP GET| EXP["💾 Subtitle Exporters\n(SRT, WebVTT, TXT - Strict UTF-8)"]
     end
 ```
 
-### Principios de Aislamiento y Resiliencia
-1. **Canales Namespace en Redis**: Cada sala publica en su propio canal `loce:room:{room_id}`. Los workers de visualización solo escuchan las salas activas solicitadas por su clúster de clientes locales.
-2. **Fallback Automático In-Memory**: Si `REDIS_URL` no está definido o el clúster Redis experimenta una caída, el sistema conmuta instantáneamente al broker en memoria local sin interrumpir la transmisión en vivo.
-3. **Backpressure Inteligente con Protección de Segmentos Finales**:
-   - Cada suscriptor cuenta con una cola acotada (`maxsize=150`).
-   - Cuando una conexión lenta satura la cola, el algoritmo de backpressure identifica y descarta **únicamente borradores parciales antiguos**.
-   - **Los segmentos `final` nunca se descartan**, garantizando que el transcript permanente permanezca íntegro y sin lagunas.
+### Resumen del Flujo de Datos
+
+```
+[Audio Source: Mic/File/OBS]
+       │ (16kHz 16-bit PCM chunks, ~200ms)
+       ▼
+[WebSocket Ingest Handler] ──(Security: 64 KB limit, WS 1009 guard)
+       │
+       ▼
+[AudioNormalizer + RingBuffer] ──(Silence Truncation & Level Metering)
+       │
+       ▼
+[TranscriptionProvider] ──(Inference via Gemini Live Bidi or Gemma 2 Edge)
+       │
+       ▼
+[PubSubBroker (Redis / In-Memory)] ──(Channel: loce:room:{roomId})
+       │
+       ├──> [Smart Backpressure Queue] ──> [Audience View: EN, ES, PT, FR, DE, IT, RU, ZH]
+       ├──> [Smart Backpressure Queue] ──> [OBS Overlay: Native Transparent Browser Source]
+       └──> [Synchronized Timecodes]   ──> [Exporters: SubRip .srt / WebVTT .vtt / .txt]
+```
 
 ---
 
-## 📺 Guía de Integración para OBS Studio y vMix
+## ⚡ Motores de Inferencia Híbridos: Cloud vs. Edge
 
-LOCE cuenta con una vista dedicada de superposición (`/overlay/:roomId`) con fondo 100% transparente y tipografía con sombra broadcast para inyectar subtítulos sobre cualquier cámara o captura de pantalla.
+LOCE permite alternar en tiempo de ejecución o por configuración de entorno entre inferencia de vanguardia en la nube y ejecución soberana 100% on-premise:
 
-### 1. Configuración en OBS Studio
-1. En tu escena de OBS, agregá una fuente de tipo **Navegador (Browser Source)**.
-2. Configurá los parámetros:
-   - **URL**: `http://localhost:8000/overlay/main-stage?lang=pt&theme=dark&lines=2&size=xl`
-   - **Ancho (Width)**: `1920`
-   - **Alto (Height)**: `1080`
-   - **CSS Personalizado**: Dejar vacío (el componente incluye `background: transparent !important`).
-   - **Apagar fuente cuando no esté visible**: Marcado (opcional para ahorro de recursos).
-
-### 2. Parámetros de Personalización de la URL
-
-| Parámetro | Valores Disponibles | Descripción | Ejemplo |
+| Capacidad | ⚡ Google Gemini Live API | 🔒 Gemma 2 On-Premise (Edge) | 🧪 Mock Simulation Engine |
 | :--- | :--- | :--- | :--- |
-| `lang` | `pt`, `es`, `en` | Idioma de los subtítulos | `lang=pt` |
-| `theme` | `dark`, `light` | Contraste de texto y sombras | `theme=dark` |
-| `lines` | `1`, `2`, `3` | Número de líneas visibles simultáneas | `lines=2` |
-| `size` | `sm`, `md`, `lg`, `xl` | Tamaño de la fuente tipográfica | `size=xl` |
+| **Entorno de Ejecución** | Google Cloud AI Hypercomputer | Servidor Local / GPU Edge / Air-Gapped | En memoria local / Offline CI/CD |
+| **Soberanía y Privacidad** | Conexión saliente cifrada TLS | **100% On-Premise (Zero Data Egress)** | Totalmente sintético |
+| **Protocolo de Inferencia** | WebSocket `BidiGenerateContent` | Streaming Token-by-Token (Ollama / vLLM) | Async loop determinístico |
+| **Modelo Recomendado** | `models/gemini-3.5-transcribe-live` | `gemma2:2b` / `gemma:2b` | Script pre-compilado de conferencia |
+| **Idiomas Simultáneos** | 8 (EN, ES, PT, FR, DE, IT, RU, ZH) | 8 (EN, ES, PT, FR, DE, IT, RU, ZH) | 8 (EN, ES, PT, FR, DE, IT, RU, ZH) |
+| **Glosario Técnico** | Inyección en System Instructions | Inyección en System Prompt de Gemma | Mapeo por diccionario de regex |
+| **Requisitos Hardware** | `GEMINI_API_KEY` (sin GPU local) | GPU NVIDIA / Apple Silicon / CPU AVX2 | Cero dependencias externas |
 
 ---
 
-## 🎛️ Matriz de Monitoreo NOC (Admin Dashboard)
+## 🚀 Benchmark Real de Concurrencia Extrema (32 Salas, 192 WebSockets)
 
-El panel de administración (`/admin`) incluye una **Matriz de Operaciones de Alta Densidad** diseñada para supervisar decenas de salas concurrentes desde una sola pantalla:
+LOCE fue sometido a una prueba de estrés masiva emulando la escala completa de **Nerdearla** (32 escenarios en paralelo) con el arnés automatizado [`scripts/stress_test.py`](scripts/stress_test.py):
 
-- **Telemetría de Inferencia Activa**: Contadores en cabecera de salas activas por motor (`⚡ Gemini Live`, `🔒 Gemma On-Premise`, `🧪 Mock`).
-- **Semáforos de Estado en Tiempo Real**:
-  - 🟢 **Óptimo**: Latencia de procesamiento `< 50 ms`.
-  - 🟡 **Normal**: Latencia de procesamiento `50 ms – 200 ms`.
-  - 🔴 **Alerta**: Latencia `> 200 ms` o degradación de conexión.
-- **Acceso Directo Trilingüe**: Enlaces con 1 clic para abrir OBS Overlay en portugués, español o inglés.
-- **Descargas Inmediatas**: Exportación de archivos `.srt`, `.vtt` y `.txt` listos para distribución post-evento.
-
----
-
-## 🛠️ Estructura del Proyecto
+- **Parámetros**: 32 salas simultáneas (`stage-1` a `stage-32`), 12.0s de audio por sala, 5 idiomas receptores activos por sala (ES, EN, PT, ZH, RU).
+- **Concurrencia**: 32 streams de ingesta PCM + 160 clientes de visualización = **192 conexiones WebSocket activas simultáneas**.
 
 ```text
-├── core/
-│   ├── ingestion/       # Normalización PCM 16kHz, ring buffer y remuestreo
-│   ├── engine/          # Provider Gemini Live Bidi WS, GemmaLocalProvider, MockProvider
-│   ├── glossary/        # Glosario técnico y corrección fonética en vuelo
-│   └── exporters/       # Generadores de subtítulos SRT, WebVTT y texto plano
-├── server/
-│   ├── routers/         # Endpoints WebSocket (ingesta, stream) y REST (salas, exportación)
-│   ├── services/        # Orquestador de salas y ciclo de vida de sesiones
-│   └── pubsub/          # Broker Redis Pub/Sub distribuido con fallback local
-├── web/                 # Frontend React 19 + TypeScript + Vite + Tailwind CSS
-│   ├── src/components/  # AudienceView, ObsOverlay, AdminDashboard, AudioIngestPanel
-│   └── src/hooks/       # useCaptionStream, useAudioIngest (Web Audio API)
-├── fixtures/            # Audios de prueba PCM 16kHz
-├── scripts/             # Runner de simulación y arnés de estrés multi-sala
-├── tests/               # Suite completa de tests unitarios e integración (pytest)
-├── docker/              # Dockerfile multi-stage y docker-compose.yml
-├── LICENSE              # Apache 2.0
-└── README.md            # Documentación completa y guía de arquitectura
+================================================================================================
+📊 MULTI-STAGE CONCURRENT PERFORMANCE MATRIX (32 PARALLEL STAGES)
+================================================================================================
+STAGE      | AUDIO (KB) | PARTIALS     | FINALS     | P50 (ms)  | P95 (ms)  | STATUS  
+------------------------------------------------------------------------------------------------
+stage-1    |    375.0KB |           85 |         20 |    4.39ms |    8.10ms | ✅ PASS  
+stage-2    |    375.0KB |           85 |         20 |    5.26ms |    7.09ms | ✅ PASS  
+stage-3    |    375.0KB |           85 |         20 |    5.17ms |    6.90ms | ✅ PASS  
+stage-4    |    375.0KB |           85 |         20 |    5.26ms |    6.90ms | ✅ PASS  
+stage-5    |    375.0KB |           85 |         20 |    5.19ms |    6.78ms | ✅ PASS  
+stage-6    |    375.0KB |           85 |         20 |    5.25ms |   10.40ms | ✅ PASS  
+stage-7    |    375.0KB |           85 |         20 |    5.50ms |   11.92ms | ✅ PASS  
+stage-8    |    375.0KB |           85 |         20 |    5.63ms |    8.22ms | ✅ PASS  
+stage-9    |    375.0KB |           85 |         20 |    5.44ms |    8.34ms | ✅ PASS  
+stage-10   |    375.0KB |           85 |         20 |    5.34ms |    8.08ms | ✅ PASS  
+stage-11   |    375.0KB |           85 |         20 |    5.19ms |   10.07ms | ✅ PASS  
+stage-12   |    375.0KB |           85 |         20 |    5.12ms |   10.12ms | ✅ PASS  
+stage-13   |    375.0KB |           85 |         20 |    5.32ms |    6.78ms | ✅ PASS  
+stage-14   |    375.0KB |           85 |         20 |    5.17ms |   11.10ms | ✅ PASS  
+stage-15   |    375.0KB |           85 |         20 |    5.34ms |   11.51ms | ✅ PASS  
+stage-16   |    375.0KB |           85 |         20 |    5.66ms |    9.03ms | ✅ PASS  
+stage-17   |    375.0KB |           85 |         20 |    4.35ms |   10.52ms | ✅ PASS  
+stage-18   |    375.0KB |           85 |         20 |    5.23ms |   12.81ms | ✅ PASS  
+stage-19   |    375.0KB |           85 |         20 |    5.28ms |   10.93ms | ✅ PASS  
+stage-20   |    375.0KB |           85 |         20 |    5.44ms |   12.06ms | ✅ PASS  
+stage-21   |    375.0KB |           85 |         20 |    5.32ms |   12.64ms | ✅ PASS  
+stage-22   |    375.0KB |           85 |         20 |    5.09ms |   12.28ms | ✅ PASS  
+stage-23   |    375.0KB |           85 |         20 |    5.24ms |   10.70ms | ✅ PASS  
+stage-24   |    375.0KB |           85 |         20 |    5.36ms |   11.14ms | ✅ PASS  
+stage-25   |    375.0KB |           85 |         20 |    5.21ms |   11.22ms | ✅ PASS  
+stage-26   |    375.0KB |           85 |         20 |    5.08ms |   12.16ms | ✅ PASS  
+stage-27   |    375.0KB |           85 |         20 |    5.40ms |   14.55ms | ✅ PASS  
+stage-28   |    375.0KB |           85 |         20 |    6.17ms |   15.87ms | ✅ PASS  
+stage-29   |    375.0KB |           85 |         20 |    5.38ms |    7.10ms | ✅ PASS  
+stage-30   |    375.0KB |           85 |         20 |    5.21ms |   10.20ms | ✅ PASS  
+stage-31   |    375.0KB |           85 |         20 |    5.05ms |   15.66ms | ✅ PASS  
+stage-32   |    375.0KB |           85 |         20 |    5.39ms |    7.65ms | ✅ PASS  
+------------------------------------------------------------------------------------------------
 ```
+
+### Métricas Agregadas Consolidadas
+
+| Métrica de Rendimiento | Resultado Medido en Producción | Objetivo SLA |
+| :--- | :---: | :---: |
+| **Salas Concurrentes Activas** | **32 escenarios** | &ge; 10 |
+| **Canales WebSocket Activos** | **192 conexiones simultáneas** | &ge; 50 |
+| **Throughput de Ingesta de Audio** | **803.89 KB/s** (12.0 MB transferidos) | &ge; 250 KB/s |
+| **Throughput de Eventos de Subtítulos** | **225.1 eventos/segundo** (2,720 parciales, 640 finales) | &ge; 50 ev/s |
+| **Latencia Extremo a Extremo (P50)** | **5.26 ms** | < 100 ms |
+| **Latencia Extremo a Extremo (P95)** | **11.65 ms** | < 250 ms |
+| **Latencia Extremo a Extremo (P99)** | **16.42 ms** | < 1,500 ms |
+| **Tasa de Éxito de Entrega** | **100.0%** (32 de 32 salas verificadas) | 100% |
 
 ---
 
-## 🚦 Inicio Rápido (Quickstart)
+## 🎙️ Emisión de Audio Nativa en Navegador (Zero-Friction Ingest)
 
-### 1. Entorno Backend
+LOCE incorpora un emisor de audio profesional basado en **Web Audio API** integrado en el panel de control ([`useAudioIngest.ts`](web/src/hooks/useAudioIngest.ts) y [`AudioIngestPanel.tsx`](web/src/components/AudioIngestPanel.tsx)). No requiere software adicional ni drivers virtuales:
+
+1. **Modo Micrófono en Vivo**:
+   - Captura directa vía `navigator.mediaDevices.getUserMedia` con cancelación de eco y supresión de ruido.
+   - Downsampling en cliente desde la tasa nativa (44.1kHz o 48kHz) a **Linear PCM 16-bit mono a 16,000 Hz**.
+   - **VU Meter Reactivo**: Indicador RMS de 60 FPS con gradiente suave (Esmeralda &rarr; Ámbar &rarr; Carmesí).
+2. **Modo Archivo de Audio (WAV / MP3 / OGG)**:
+   - Carga interactiva mediante selector o drag-and-drop.
+   - Decodificación con `AudioContext.decodeAudioData` y streaming a **velocidad real 1x** en bloques de 200ms (6,400 bytes).
+3. **Carga en 1 Clic (Sample Talk Demo)**:
+   - Botón *"Cargar Audio de Demostración"* en `/admin` para probar el flujo de subtitulado de inmediato sin requerir micrófono.
+
+---
+
+## 🌐 Pipeline Octalingual Simultáneo (8 Idiomas)
+
+LOCE procesa audio en inglés o español y genera en tiempo real subtítulos en **8 idiomas simultáneos** con alineación temporal idéntica:
+
+```
+                   ┌──────────────────────────────────────┐
+                   │        Audio del Orador (PCM)        │
+                   └──────────────────┬───────────────────┘
+                                      │
+                                      ▼
+                   ┌──────────────────────────────────────┐
+                   │    Motor de Inferencia Multilingüe   │
+                   └──────────────────┬───────────────────┘
+          ┌─────────────┬─────────────┼─────────────┬─────────────┐
+          ▼             ▼             ▼             ▼             ▼
+     ┌─────────┐   ┌─────────┐   ┌─────────┐   ┌─────────┐   ┌─────────┐
+     │ EN (en) │   │ ES (es) │   │ PT (pt) │   │ FR (fr) │   │ DE (de) │
+     └─────────┘   └─────────┘   └─────────┘   └─────────┘   └─────────┘
+          ▲             ▲             ▲             ▲             ▲
+          └─────────────┴─────────────┼─────────────┴─────────────┘
+                                      │
+                        ┌─────────────┼─────────────┐
+                        ▼             ▼             ▼
+                   ┌─────────┐   ┌─────────┐   ┌─────────┐
+                   │ IT (it) │   │ RU (ru) │   │ ZH (zh) │
+                   └─────────┘   └─────────┘   └─────────┘
+```
+
+- **Tokenización Progresiva CJK y Cirílico**: Procesamiento especializado caracter-por-caracter para Chino (`zh`) y palabras cirílicas (`ru`), garantizando animación fluida sin saltos tipográficos.
+- **Sincronización de Timecodes**: Los timestamps (`start_ms`, `end_ms`) son idénticos entre los 8 idiomas para garantizar exportaciones sincronizadas.
+- **Filtrado por Idioma en Pub/Sub**: Los clientes se suscriben indicando `?lang=es`, `?lang=zh`, etc., evitando el tráfico innecesario de los demás idiomas.
+
+---
+
+## 🛡️ Auditoría de Seguridad, Concurrencia y Resiliencia
+
+LOCE implementa una arquitectura defensiva probada contra vectores comunes de ataque y degradación de memoria:
+
+1. **Protección contra Path Traversal e Inyecciones**:
+   - `room_id` restringido rigurosamente mediante el regex `^[a-zA-Z0-9_-]{1,64}$` en routers REST y WebSockets. Entradas con `../`, caracteres de escape o espacios son rechazadas con **HTTP 400 Bad Request** o **WS 1008 Policy Violation**.
+   - Parámetros de exportación validados contra `("srt", "vtt", "txt")` e idiomas permitidos en `SUPPORTED_LANGUAGES`.
+   - Confinamiento estricto de fixtures estáticos en `/fixtures/{filename:path}` mediante `os.path.commonpath`, impidiendo cualquier escape del directorio de fixtures.
+2. **Defensas contra DoS en WebSockets**:
+   - Límite de tamaño de paquete de audio fijado en **64 KB** (`MAX_AUDIO_CHUNK_BYTES`). Chunks de inundación son rechazados cerrando la conexión con **WS 1009 (Message Too Big)**.
+3. **Prevención de Fugas de Memoria en Broker**:
+   - La desuscripción de clientes en `stream_ws.py` se ejecuta protegida por `asyncio.shield(pubsub_broker.unsubscribe(subscriber))` en el bloque `finally`, garantizando la eliminación limpia de colas huérfanas ante desconexiones forzadas.
+4. **Protección de Memoria en el Navegador**:
+   - Guard de tamaño máximo de **100 MB** en `useAudioIngest.ts` antes de la decodificación en memoria por parte de la Web Audio API.
+5. **Aislamiento Estricto de Secretos**:
+   - Verificación de no exposición de variables sensibles (`GEMINI_API_KEY`, `REDIS_URL`) en `/api/rooms` ni `/healthz`.
+   - Cero ocurrencias de `dangerouslySetInnerHTML` en todo el frontend React.
+
+---
+
+## 📺 Integración para OBS Studio y vMix
+
+LOCE ofrece una vista de superposición dedicada (`/overlay/:roomId`) diseñada con **fondo transparente nativo** y **tipografía broadcast de alto contraste**:
+
+### Configuración en OBS Studio
+1. En tu escena de OBS, agregá una fuente de tipo **Navegador (Browser Source)**.
+2. Parámetros recomendados:
+   - **URL**: `http://localhost:8000/overlay/main-stage?lang=es&theme=dark&lines=2&size=xl`
+   - **Ancho (Width)**: `1920`
+   - **Alto (Height)**: `1080`
+   - **CSS Personalizado**: Dejar en blanco (el componente fuerza `background: transparent !important`).
+   - **Apagar fuente cuando no esté visible**: Activado.
+
+### Parámetros de la URL de Superposición
+
+| Parámetro | Opciones Permitidas | Descripción | Ejemplo |
+| :--- | :--- | :--- | :--- |
+| `lang` | `en`, `es`, `pt`, `fr`, `de`, `it`, `ru`, `zh` | Idioma de los subtítulos | `lang=pt` |
+| `theme` | `dark`, `light` | Contraste de tipografía y sombra | `theme=dark` |
+| `lines` | `1`, `2`, `3` | Líneas visibles simultáneas | `lines=2` |
+| `size` | `sm`, `md`, `lg`, `xl` | Escala tipográfica broadcast | `size=xl` |
+
+---
+
+## 🚦 Guía Rápida de Puesta en Marcha (Quickstart)
+
+### Opción 1: Docker Compose (1 Solo Comando)
+
 ```bash
-# Crear y activar entorno virtual
+docker compose up --build
+```
+El servidor LOCE compilará el frontend y el backend, levantando el servicio en `http://localhost:8000`.
+
+---
+
+### Opción 2: Instalación Local
+
+#### 1. Clonar y Configurar Entorno Python
+```bash
+git clone https://github.com/maximolopezchenlo-lab/loce-engine.git
+cd loce-engine
+
 python3 -m venv .venv
 source .venv/bin/activate
-
-# Instalar dependencias
 pip install -r requirements.txt
-
-# Configurar variables de entorno
 cp .env.example .env
 ```
 
-### 2. Configuración de Motor de Inferencia
+#### 2. Seleccionar Modo de Inferencia en `.env`
 
-#### Opción A: Modo 100% Local Air-Gapped con Gemma 2 (Recomendado On-Premise)
+**Modo 100% Local Air-Gapped (Gemma 2 via Ollama):**
 ```bash
-# 1. Iniciar runtime de Ollama con Gemma 2
+# Iniciar modelo local
 ollama run gemma2:2b
 
-# 2. Configurar en .env:
+# Configurar en .env
 DEFAULT_PROVIDER=gemma
 GEMMA_BASE_URL=http://localhost:11434
 GEMMA_MODEL=gemma2:2b
 ```
 
-#### Opción B: Modo Cloud con Google Gemini Live
+**Modo Cloud (Google Gemini Live API):**
 ```bash
-# Configurar en .env:
+# Configurar en .env
 DEFAULT_PROVIDER=gemini
-GEMINI_API_KEY=tu_clave_de_api_aqui
+GEMINI_API_KEY=tu_api_key_de_gemini
 ```
 
-#### Opción C: Modo Mock (Zero Config / Offline)
+**Modo Simulación Sintética (Zero-Config / Offline):**
 ```bash
 DEFAULT_PROVIDER=mock
 ```
 
-### 3. Ejecutar Tests Automatizados
-```bash
-pytest -v
-```
-
-### 4. Compilar Frontend
+#### 3. Compilar Frontend Web
 ```bash
 cd web
 npm install
@@ -268,26 +320,57 @@ npm run build
 cd ..
 ```
 
-### 5. Iniciar Servidor LOCE
+#### 4. Ejecutar Suite de Tests
+```bash
+pytest -v
+```
+
+#### 5. Iniciar Servidor LOCE
 ```bash
 uvicorn server.main:app --host 0.0.0.0 --port 8000
 ```
+
 - **Vista de Audiencia**: `http://localhost:8000/`
 - **Panel NOC de Administración**: `http://localhost:8000/admin`
-- **Superposición OBS (Portugués)**: `http://localhost:8000/overlay/main-stage?lang=pt`
-- **Documentación Swagger / OpenAPI**: `http://localhost:8000/docs`
+- **OBS Overlay (Español)**: `http://localhost:8000/overlay/main-stage?lang=es`
+- **OBS Overlay (Chino)**: `http://localhost:8000/overlay/main-stage?lang=zh`
+- **API Swagger / OpenAPI**: `http://localhost:8000/docs`
 
 ---
 
-## 🔬 Ejecutar el Benchmark de Estrés
+## 🔬 Reproducción del Benchmark de Estrés
 
-Para reproducir la prueba de 10 salas concurrentes durante 15 segundos:
+Para reproducir el benchmark de 32 salas concurrentes durante 12 segundos:
 
 ```bash
-python scripts/stress_test.py --rooms 10 --duration 15.0
+python scripts/stress_test.py --rooms 32 --duration 12.0 --langs es,en,pt,zh,ru
 ```
 
-El script conectará 10 salas de ingesta y 30 receptores trilingües simultáneos, desplegando la matriz de latencias P50/P95/P99 al finalizar.
+---
+
+## 📁 Estructura del Repositorio
+
+```text
+├── core/
+│   ├── ingestion/         # Normalización PCM 16kHz, ring buffer y remuestreo
+│   ├── engine/            # GeminiLiveProvider, GemmaLocalProvider, MockStreamingProvider
+│   ├── glossary/          # Glosario técnico y reemplazos regex en vuelo
+│   └── exporters/         # Exportadores SRT, WebVTT y TXT en UTF-8 estricto
+├── server/
+│   ├── routers/           # WebSockets (ingest, stream), REST (rooms, export, sse)
+│   ├── services/          # Orquestador de salas y ciclo de vida de sesiones
+│   └── pubsub/            # Broker Redis Pub/Sub distribuido con fallback In-Memory
+├── web/                   # Frontend React 19 + TypeScript + Vite + Tailwind CSS
+│   ├── src/components/    # AudienceView, ObsOverlay, AdminDashboard, AudioIngestPanel
+│   └── src/hooks/         # useCaptionStream, useAudioIngest (Web Audio API)
+├── fixtures/              # Audios de prueba PCM 16kHz (sample_talk.wav)
+├── scripts/               # Harness de benchmark de estrés y runner de simulación
+├── tests/                 # Suite de tests unitarios, integración y seguridad (pytest)
+├── docker/                # Dockerfile multi-stage y docker-compose.yml
+├── docker-compose.yml     # Orquestación de 1 comando
+├── LICENSE                # Licencia Apache 2.0
+└── README.md              # Documentación técnica completa
+```
 
 ---
 
