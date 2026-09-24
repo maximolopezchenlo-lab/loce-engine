@@ -109,12 +109,18 @@ async def health_check():
     }
 
 
+# Static fixtures mounting for browser audio demos
+fixtures_dir = Path(__file__).resolve().parent.parent / "fixtures"
+if fixtures_dir.exists():
+    app.mount("/fixtures", StaticFiles(directory=str(fixtures_dir)), name="fixtures")
+
 # Static frontend files mounting if built
 web_dist = Path(__file__).resolve().parent.parent / "web" / "dist"
 if web_dist.exists() and (web_dist / "index.html").exists():
     app.mount("/assets", StaticFiles(directory=str(web_dist / "assets")), name="assets")
 
     @app.get("/{full_path:path}", include_in_schema=False)
+
     async def serve_spa(full_path: str):
         file_path = web_dist / full_path
         if file_path.is_file():

@@ -16,8 +16,10 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { RoomSummary } from "../types";
+import { AudioIngestPanel } from "./AudioIngestPanel";
 
 export const AdminDashboard: React.FC = () => {
+
   const [rooms, setRooms] = useState<RoomSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
@@ -160,8 +162,18 @@ export const AdminDashboard: React.FC = () => {
           </button>
         </div>
 
+        {/* Live Audio Broadcaster Panel (Microphone & Audio File Ingest) */}
+        <section>
+          <AudioIngestPanel
+            rooms={rooms}
+            selectedRoomId={selectedRoomId}
+            onRoomSelect={(id) => setSelectedRoomId(id)}
+          />
+        </section>
+
         {/* Multi-Room Monitoring Grid & High-Density Matrix */}
         <section className="space-y-4">
+
           <div className="flex flex-wrap items-center justify-between gap-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <Cpu className="w-5 h-5 text-indigo-400" />
