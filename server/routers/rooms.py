@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
@@ -9,11 +10,24 @@ from pydantic import BaseModel, Field
 from core.engine.base import SUPPORTED_LANGUAGES
 from core.glossary.glossary import TechnicalGlossary
 
+ROOM_ID_REGEX = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
+
+
+def validate_room_id(room_id: str) -> str:
+    """Validate room_id parameter against strict injection and traversal rules."""
+    if not ROOM_ID_REGEX.match(room_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid room_id '{room_id}'. Must match pattern ^[a-zA-Z0-9_-]{{1,64}}$",
+        )
+    return room_id
+
+
 router = APIRouter(prefix="/api/rooms", tags=["Rooms"])
 
 
 class CreateRoomRequest(BaseModel):
-    room_id: str = Field(..., min_length=2, max_length=50)
+    room_id: str = Field(..., pattern=r"^[a-zA-Z0-9_-]{1,64}$")
     name: Optional[str] = None
     source_language: str = "en"
     target_languages: list[str] = Field(default_factory=lambda: list(SUPPORTED_LANGUAGES))
@@ -55,6 +69,7 @@ async def create_room(payload: CreateRoomRequest, request: Request):
 @router.get("/{room_id}")
 async def get_room(room_id: str, request: Request):
     """Get metadata, metrics, and recorded history for a specific room."""
+    validate_room_id(room_id)
     room_service = request.app.state.room_service
     room = room_service.get_room(room_id)
     if not room:
@@ -84,6 +99,7 @@ async def get_room(room_id: str, request: Request):
 @router.post("/{room_id}/start")
 async def start_room(room_id: str, request: Request):
     """Start or resume transcription pipeline for room."""
+    validate_room_id(room_id)
     room_service = request.app.state.room_service
     room = room_service.get_room(room_id)
     if not room:
@@ -95,6 +111,7 @@ async def start_room(room_id: str, request: Request):
 @router.post("/{room_id}/stop")
 async def stop_room(room_id: str, request: Request):
     """Stop transcription pipeline for room."""
+    validate_room_id(room_id)
     room_service = request.app.state.room_service
     room = room_service.get_room(room_id)
     if not room:
@@ -106,6 +123,7 @@ async def stop_room(room_id: str, request: Request):
 @router.get("/{room_id}/glossary")
 async def get_glossary(room_id: str, request: Request):
     """Retrieve technical glossary and registered speakers for room."""
+    validate_room_id(room_id)
     glossary_engine = request.app.state.glossary_engine
     glossary = glossary_engine.get_room_glossary(room_id)
     return glossary.model_dump()
@@ -114,6 +132,7 @@ async def get_glossary(room_id: str, request: Request):
 @router.post("/{room_id}/glossary")
 async def update_glossary(room_id: str, payload: UpdateGlossaryRequest, request: Request):
     """Update custom terms, speaker names, and regex replacements for room."""
+    validate_room_id(room_id)
     glossary_engine = request.app.state.glossary_engine
     glossary = TechnicalGlossary(
         room_id=room_id,

@@ -5,11 +5,16 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import uuid
 from typing import Optional
-from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect, status
+
+from core.engine.base import SUPPORTED_LANGUAGES
 
 logger = logging.getLogger("loce.stream_ws")
+
+ROOM_ID_REGEX = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
 
 router = APIRouter()
 
@@ -22,6 +27,18 @@ async def websocket_caption_stream(
     mode: str = Query(default="all", description="'all' (partials + finals) or 'final'"),
 ) -> None:
     """Stream live caption events to web clients and broadcast overlays with low latency."""
+    # 1. Path traversal & injection validation
+    if not ROOM_ID_REGEX.match(room_id):
+        await websocket.accept()
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid room_id")
+        return
+
+    # 2. Language filter validation
+    if lang is not None and lang not in SUPPORTED_LANGUAGES:
+        await websocket.accept()
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid lang")
+        return
+
     await websocket.accept()
 
     room_service = websocket.app.state.room_service
@@ -79,4 +96,7 @@ async def websocket_caption_stream(
     except Exception as e:
         logger.error(f"Error in stream WebSocket '{subscriber_id}': {e}", exc_info=True)
     finally:
-        await pubsub_broker.unsubscribe(subscriber)
+        try:
+            await asyncio.shield(pubsub_broker.unsubscribe(subscriber))
+        except Exception as e:
+            logger.warning(f"Error unsubscribing '{subscriber_id}' from broker: {e}")

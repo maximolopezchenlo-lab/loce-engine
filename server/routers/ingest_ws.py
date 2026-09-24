@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+import re
 from typing import Optional
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
 logger = logging.getLogger("loce.ingest_ws")
+
+ROOM_ID_REGEX = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
+MAX_AUDIO_CHUNK_BYTES = 64 * 1024  # 64 KB max per chunk (10x 200ms frame)
 
 router = APIRouter()
 
@@ -20,6 +25,12 @@ async def websocket_audio_ingest(
     channels: int = 1,
 ) -> None:
     """Ingest live PCM audio frames from speakers, OBS, or mock runners."""
+    # 1. Path traversal & injection validation
+    if not ROOM_ID_REGEX.match(room_id):
+        await websocket.accept()
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid room_id")
+        return
+
     await websocket.accept()
 
     # Access room_service via app state
@@ -41,6 +52,17 @@ async def websocket_audio_ingest(
             # Handle binary PCM audio data
             if "bytes" in message and message["bytes"]:
                 data = message["bytes"]
+                # 2. DoS prevention: enforce message size threshold
+                if len(data) > MAX_AUDIO_CHUNK_BYTES:
+                    logger.warning(
+                        f"Chunk size {len(data)} exceeds {MAX_AUDIO_CHUNK_BYTES} bytes. Closing WS 1009."
+                    )
+                    await websocket.close(
+                        code=status.WS_1009_MESSAGE_TOO_BIG,
+                        reason=f"Audio chunk exceeds {MAX_AUDIO_CHUNK_BYTES} bytes limit",
+                    )
+                    break
+
                 frames_received += 1
                 await room_service.ingest_audio(
                     room_id=room_id,
@@ -62,6 +84,8 @@ async def websocket_audio_ingest(
                 except json.JSONDecodeError:
                     pass
 
+    except (WebSocketDisconnect, asyncio.CancelledError):
+        logger.info(f"Audio ingest client disconnected from room '{room_id}' after {frames_received} frames.")
     except Exception as e:
         err_msg = str(e).lower()
         if "disconnect" in err_msg or "closed" in err_msg or isinstance(e, WebSocketDisconnect):
@@ -72,3 +96,5 @@ async def websocket_audio_ingest(
                 await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
             except Exception:
                 pass
+    finally:
+        logger.debug(f"Cleaned up audio ingest session for room '{room_id}' (received {frames_received} frames).")

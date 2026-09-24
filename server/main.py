@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import AsyncGenerator
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -110,10 +110,28 @@ async def health_check():
     }
 
 
-# Static fixtures mounting for browser audio demos
+# Static fixtures endpoint with strict path traversal confinement
 fixtures_dir = Path(__file__).resolve().parent.parent / "fixtures"
-if fixtures_dir.exists():
-    app.mount("/fixtures", StaticFiles(directory=str(fixtures_dir)), name="fixtures")
+
+
+@app.get("/fixtures/{filename:path}")
+async def serve_fixture(filename: str):
+    """Serve fixture audio files safely confined within fixtures/ directory."""
+    base_dir = fixtures_dir.resolve()
+    target_path = (base_dir / filename).resolve()
+    try:
+        if os.path.commonpath([str(base_dir), str(target_path)]) != str(base_dir):
+            raise HTTPException(status_code=400, detail="Path traversal detected")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid path")
+
+    if not target_path.is_file():
+        raise HTTPException(status_code=404, detail="Fixture not found")
+
+    return FileResponse(target_path)
+
 
 # Static frontend files mounting if built
 web_dist = Path(__file__).resolve().parent.parent / "web" / "dist"

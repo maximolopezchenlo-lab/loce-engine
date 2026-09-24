@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import re
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Query, Request, Response
+from fastapi import APIRouter, HTTPException, Query, Request, Response, status
 
+from core.engine.base import SUPPORTED_LANGUAGES
 from core.exporters.exporters import ExportFormat, SessionExporter
+
+ROOM_ID_REGEX = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
+ALLOWED_FORMATS = ("srt", "vtt", "txt")
 
 router = APIRouter(prefix="/api/rooms/{room_id}/export", tags=["Exporters"])
 
@@ -19,19 +24,32 @@ async def export_session_transcript(
     include_speaker: bool = Query(default=True, description="Include speaker tags in export"),
 ):
     """Generate and download formatted subtitle or transcript file post-session."""
+    # 1. Path traversal & injection validation
+    if not ROOM_ID_REGEX.match(room_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid room_id '{room_id}'. Must match pattern ^[a-zA-Z0-9_-]{{1,64}}$",
+        )
+
+    format_lower = format_name.lower()
+    if format_lower not in ALLOWED_FORMATS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported format '{format_name}'. Allowed formats: {ALLOWED_FORMATS}.",
+        )
+
+    if lang not in SUPPORTED_LANGUAGES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported language '{lang}'. Allowed: {SUPPORTED_LANGUAGES}.",
+        )
+
     room_service = request.app.state.room_service
     room = room_service.get_room(room_id)
     if not room:
         raise HTTPException(status_code=404, detail=f"Room '{room_id}' not found.")
 
-    format_lower = format_name.lower()
-    try:
-        export_fmt = ExportFormat(format_lower)
-    except ValueError:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported format '{format_name}'. Allowed: 'srt', 'vtt', 'txt'.",
-        )
+    export_fmt = ExportFormat(format_lower)
 
     content = SessionExporter.export(
         events=room.history,

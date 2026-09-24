@@ -98,6 +98,8 @@ export function calculateRmsLevel(samples: Float32Array | Int16Array): number {
   }
 }
 
+export const MAX_AUDIO_FILE_SIZE_BYTES = 100 * 1024 * 1024; // 100 MB max size limit to prevent memory exhaustion
+
 export function useAudioIngest(options: UseAudioIngestOptions = {}) {
   const { initialRoomId = "main-stage", chunkMs = 200, targetSampleRate = 16000 } = options;
 
@@ -323,6 +325,15 @@ export function useAudioIngest(options: UseAudioIngestOptions = {}) {
     async (arrayBuffer: ArrayBuffer, name: string) => {
       try {
         setError(null);
+        if (arrayBuffer.byteLength > MAX_AUDIO_FILE_SIZE_BYTES) {
+          setError(
+            `El archivo excede el tamaño máximo permitido de 100 MB (${(
+              arrayBuffer.byteLength / (1024 * 1024)
+            ).toFixed(1)} MB).`
+          );
+          return;
+        }
+
         const audioCtx = getAudioContext();
         const decoded = await audioCtx.decodeAudioData(arrayBuffer);
 
@@ -362,6 +373,14 @@ export function useAudioIngest(options: UseAudioIngestOptions = {}) {
   // Load a user-provided File
   const loadFile = useCallback(
     async (file: File) => {
+      if (file.size > MAX_AUDIO_FILE_SIZE_BYTES) {
+        setError(
+          `El archivo excede el tamaño máximo permitido de 100 MB (${(
+            file.size / (1024 * 1024)
+          ).toFixed(1)} MB).`
+        );
+        return;
+      }
       const buffer = await file.arrayBuffer();
       await decodeAndProcessAudio(buffer, file.name);
     },
