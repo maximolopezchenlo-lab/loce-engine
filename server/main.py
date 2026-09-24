@@ -41,12 +41,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await pubsub_broker.initialize()
     glossary_engine = GlossaryEngine()
 
-    default_provider = os.getenv("DEFAULT_PROVIDER", "gemini")
-    if not os.getenv("GEMINI_API_KEY"):
+    default_provider = os.getenv("DEFAULT_PROVIDER", "gemini").lower()
+    if default_provider == "gemini" and not os.getenv("GEMINI_API_KEY"):
         logger.warning(
             "GEMINI_API_KEY is not set. Defaulting provider to 'mock' for local offline testing."
         )
         default_provider = "mock"
+
 
     room_service = RoomService(
         pubsub_broker=pubsub_broker,

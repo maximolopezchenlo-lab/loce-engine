@@ -19,7 +19,9 @@ from core.engine.base import (
 )
 from core.engine.gemini_live import GeminiLiveProvider
 from core.engine.mock_provider import MockStreamingProvider
+from core.engine.gemma_local import GemmaLocalProvider
 from core.glossary.glossary import GlossaryEngine, TechnicalGlossary
+
 from core.ingestion.audio_consumer import AudioConsumer
 from server.pubsub.broker import PubSubBroker
 
@@ -109,7 +111,14 @@ class RoomSession:
             except Exception as e:
                 logger.warning(f"Failed to instantiate GeminiLiveProvider: {e}. Falling back to MockStreamingProvider.")
                 return MockStreamingProvider()
+        elif provider_type == "gemma":
+            try:
+                return GemmaLocalProvider(sample_rate=self.sample_rate)
+            except Exception as e:
+                logger.warning(f"Failed to instantiate GemmaLocalProvider: {e}. Falling back to MockStreamingProvider.")
+                return MockStreamingProvider()
         return MockStreamingProvider()
+
 
 
 class RoomService:

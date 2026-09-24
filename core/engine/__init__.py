@@ -9,6 +9,7 @@ from core.engine.base import (
 )
 from core.engine.mock_provider import MockStreamingProvider
 from core.engine.gemini_live import GeminiLiveProvider
+from core.engine.gemma_local import GemmaLocalProvider
 
 __all__ = [
     "AudioChunk",
@@ -18,4 +19,6 @@ __all__ = [
     "TranscriptionProvider",
     "MockStreamingProvider",
     "GeminiLiveProvider",
+    "GemmaLocalProvider",
 ]
+

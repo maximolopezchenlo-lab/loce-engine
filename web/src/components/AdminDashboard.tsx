@@ -14,8 +14,12 @@ import {
   CheckCircle,
   AlertCircle,
   ExternalLink,
+  Zap,
+  Shield,
+  FlaskConical,
 } from "lucide-react";
 import { RoomSummary } from "../types";
+
 import { AudioIngestPanel } from "./AudioIngestPanel";
 
 export const AdminDashboard: React.FC = () => {
@@ -142,25 +146,49 @@ export const AdminDashboard: React.FC = () => {
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-6">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-3">
-              <Activity className="w-7 h-7 text-indigo-500" />
-              LOCE Production & Orchestration Dashboard
-            </h1>
-            <p className="text-sm text-slate-400 mt-1">
-              Multi-room audio ingestion, Gemini Live latency monitoring, and glossary injection.
-            </p>
+        <div className="flex flex-col gap-4 border-b border-slate-800 pb-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight flex items-center gap-3">
+                <Activity className="w-7 h-7 text-indigo-500" />
+                LOCE Production & Orchestration Dashboard
+              </h1>
+              <p className="text-sm text-slate-400 mt-1">
+                Multi-room audio ingestion, Gemini Live cloud, and on-premise Gemma inference monitoring.
+              </p>
+            </div>
+            <button
+              onClick={fetchRooms}
+              disabled={loading}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-900 border border-slate-700/80 hover:bg-slate-800 text-sm font-medium transition-all"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+              Refresh
+            </button>
           </div>
-          <button
-            onClick={fetchRooms}
-            disabled={loading}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-slate-900 border border-slate-700/80 hover:bg-slate-800 text-sm font-medium transition-all"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-            Refresh
-          </button>
+
+          {/* Active Inference Engine Telemetry & Selector Badges */}
+          <div className="flex flex-wrap items-center gap-3 pt-2 text-xs">
+            <span className="text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
+              Inferencia Activa:
+            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg font-semibold bg-cyan-950/60 text-cyan-300 border border-cyan-800/50 shadow-sm">
+                <Zap className="w-3.5 h-3.5 text-cyan-400" />
+                ⚡ Gemini Live Cloud ({rooms.filter((r) => r.provider_type === "gemini").length})
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg font-semibold bg-purple-950/60 text-purple-300 border border-purple-800/50 shadow-sm">
+                <Shield className="w-3.5 h-3.5 text-purple-400" />
+                🔒 Gemma On-Premise (Edge) ({rooms.filter((r) => r.provider_type === "gemma").length})
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg font-semibold bg-amber-950/60 text-amber-300 border border-amber-800/50 shadow-sm">
+                <FlaskConical className="w-3.5 h-3.5 text-amber-400" />
+                🧪 Mock Simulator ({rooms.filter((r) => r.provider_type === "mock").length})
+              </span>
+            </div>
+          </div>
         </div>
+
 
         {/* Live Audio Broadcaster Panel (Microphone & Audio File Ingest) */}
         <section>
@@ -212,6 +240,7 @@ export const AdminDashboard: React.FC = () => {
                 <thead className="bg-slate-900/80 border-b border-slate-800 text-slate-400 font-semibold uppercase tracking-wider">
                   <tr>
                     <th className="py-3 px-4">Stage / Room</th>
+                    <th className="py-3 px-4">Engine</th>
                     <th className="py-3 px-4">Health Status</th>
                     <th className="py-3 px-4">Avg / P95 Latency</th>
                     <th className="py-3 px-4">Audio Chunks</th>
@@ -243,8 +272,29 @@ export const AdminDashboard: React.FC = () => {
                           <span className="font-mono text-slate-500 text-[11px]">{r.room_id}</span>
                         </td>
 
+                        {/* Engine Provider Badge */}
+                        <td className="py-3 px-4">
+                          {r.provider_type === "gemma" ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-950/80 text-purple-300 border border-purple-800/60 shadow-sm">
+                              <Shield className="w-2.5 h-2.5 text-purple-400" />
+                              Gemma Edge
+                            </span>
+                          ) : r.provider_type === "gemini" ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-800/60 shadow-sm">
+                              <Zap className="w-2.5 h-2.5 text-cyan-400" />
+                              Gemini Live
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-950/80 text-amber-300 border border-amber-800/60 shadow-sm">
+                              <FlaskConical className="w-2.5 h-2.5 text-amber-400" />
+                              Mock
+                            </span>
+                          )}
+                        </td>
+
                         {/* Traffic-Light Health Indicator */}
                         <td className="py-3 px-4">
+
                           {!isActive ? (
                             <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] bg-slate-800 text-slate-400">
                               <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
@@ -384,9 +434,28 @@ export const AdminDashboard: React.FC = () => {
                   >
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        <h3 className="font-bold text-base text-white">{r.name}</h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-base text-white">{r.name}</h3>
+                          {r.provider_type === "gemma" ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-950/80 text-purple-300 border border-purple-800/60">
+                              <Shield className="w-2.5 h-2.5 text-purple-400" />
+                              Gemma
+                            </span>
+                          ) : r.provider_type === "gemini" ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-800/60">
+                              <Zap className="w-2.5 h-2.5 text-cyan-400" />
+                              Gemini
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-950/80 text-amber-300 border border-amber-800/60">
+                              <FlaskConical className="w-2.5 h-2.5 text-amber-400" />
+                              Mock
+                            </span>
+                          )}
+                        </div>
                         <span className="font-mono text-xs text-slate-400">{r.room_id}</span>
                       </div>
+
                       <span
                         className={`px-2.5 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1.5 ${
                           isActive
@@ -535,10 +604,12 @@ export const AdminDashboard: React.FC = () => {
                   onChange={(e) => setNewProvider(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-lg bg-slate-950 border border-slate-700 focus:border-indigo-500 outline-none"
                 >
-                  <option value="gemini">Gemini Live API (Multimodal Bidi WebSocket)</option>
-                  <option value="mock">Mock Streaming Provider (Zero API Key)</option>
+                  <option value="gemini">⚡ Gemini Live API (Multimodal Bidi WebSocket)</option>
+                  <option value="gemma">🔒 Gemma On-Premise (Local Edge / Air-Gapped)</option>
+                  <option value="mock">🧪 Mock Streaming Provider (Zero API Key)</option>
                 </select>
               </div>
+
 
               <button
                 type="submit"
