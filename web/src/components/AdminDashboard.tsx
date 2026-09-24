@@ -177,7 +177,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onOpenSettings }
         { id: "track-1", name: "Engineering Track", provider: "mock" },
         { id: "track-2", name: "AI & Systems Track", provider: "mock" },
         { id: "stage-alpha", name: "Alpha Stage: Distributed Systems", provider: "gemini" },
-        { id: "stage-beta", name: "Beta Stage: Edge AI & Gemma", provider: "gemma" },
+        { id: "stage-beta", name: "Beta Stage: Edge AI & Gemma 4", provider: "gemma" },
         { id: "stage-gamma", name: "Gamma Stage: Broadcast Architecture", provider: "mock" },
         { id: "stage-delta", name: "Delta Stage: Security & Sandbox", provider: "gemma" },
         { id: "track-cloud-1", name: "Cloud Engineering Track 1", provider: "gemini" },
@@ -187,7 +187,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onOpenSettings }
         { id: "track-broadcast", name: "Broadcast Design & OBS", provider: "mock" },
         { id: "track-audio-dsp", name: "Audio DSP & WebAudio", provider: "mock" },
         { id: "track-latency", name: "Ultra-Low Latency Networks", provider: "gemini" },
-        { id: "workshop-101", name: "Workshop: Gemma Fine-tuning", provider: "gemma" },
+        { id: "workshop-101", name: "Workshop: Gemma 4 Fine-tuning", provider: "gemma" },
         { id: "workshop-102", name: "Workshop: Realtime WebSockets", provider: "mock" },
         { id: "workshop-103", name: "Workshop: Gemini Live Bidi", provider: "gemini" },
         { id: "workshop-104", name: "Workshop: Multilingual Captions", provider: "mock" },
@@ -338,7 +338,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onOpenSettings }
               </span>
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg font-semibold bg-purple-950/60 text-purple-300 border border-purple-800/50 shadow-sm">
                 <Shield className="w-3.5 h-3.5 text-purple-400" />
-                🔒 Gemma On-Premise (Edge) ({rooms.filter((r) => r.provider_type === "gemma").length})
+                🔒 Gemma 4 Edge ({rooms.filter((r) => r.provider_type === "gemma").length})
               </span>
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg font-semibold bg-amber-950/60 text-amber-300 border border-amber-800/50 shadow-sm">
                 <FlaskConical className="w-3.5 h-3.5 text-amber-400" />
@@ -512,7 +512,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onOpenSettings }
                           {r.provider_type === "gemma" ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-950/80 text-purple-300 border border-purple-800/60 shadow-sm">
                               <Shield className="w-2.5 h-2.5 text-purple-400" />
-                              Gemma Edge
+                              Gemma 4 Edge
                             </span>
                           ) : r.provider_type === "gemini" ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-800/60 shadow-sm">
@@ -673,7 +673,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onOpenSettings }
                             {r.provider_type === "gemma" ? (
                               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-950/80 text-purple-300 border border-purple-800/60">
                                 <Shield className="w-2.5 h-2.5 text-purple-400" />
-                                Gemma
+                                Gemma 4 Edge
                               </span>
                             ) : r.provider_type === "gemini" ? (
                               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-800/60">
@@ -869,7 +869,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onOpenSettings }
                   className="w-full px-3.5 py-2 rounded-lg bg-slate-950 border border-slate-700 focus:border-indigo-500 outline-none"
                 >
                   <option value="gemini">⚡ Gemini Live API (Multimodal Bidi WebSocket)</option>
-                  <option value="gemma">🔒 Gemma On-Premise (Local Edge / Air-Gapped)</option>
+                  <option value="gemma">🔒 Gemma 4 On-Premise (Local Edge / Air-Gapped)</option>
                   <option value="mock">🧪 Mock Streaming Provider (Zero API Key)</option>
                 </select>
               </div>

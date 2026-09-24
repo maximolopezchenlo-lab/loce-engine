@@ -11,7 +11,7 @@
 [![Latency: P95 < 12ms](https://img.shields.io/badge/Latency-P95%20%3C%2012ms-brightgreen.svg)]()
 [![Concurrency: 32 Stages Verified](https://img.shields.io/badge/Concurrency-32%20Stages%20Verified-brightgreen.svg)]()
 [![Languages: 8](https://img.shields.io/badge/Languages-EN%20%7C%20ES%20%7C%20PT%20%7C%20FR%20%7C%20DE%20%7C%20IT%20%7C%20RU%20%7C%20ZH-orange.svg)]()
-[![Inference: Gemini Live & Gemma 2](https://img.shields.io/badge/Inference-Gemini%20Live%20API%20%7C%20Gemma%202%20Local-purple.svg)]()
+[![Inference: Gemini Live & Gemma 4](https://img.shields.io/badge/Inference-Gemini%20Live%20API%20%7C%20Gemma%204%20Local-purple.svg)]()
 
 ---
 
@@ -44,7 +44,7 @@ flowchart TD
     subgraph Inference["3. Pipeline de Inferencia Multilingüe Híbrida"]
         VAD --> ENGINE{"TranscriptionProvider\n(Abstraction Layer)"}
         ENGINE -->|Cloud TLS WebSocket| GEMINI["⚡ GeminiLiveProvider\n(Gemini Multimodal Live API\nBidiGenerateContent)"]
-        ENGINE -->|Local Edge HTTP / Stream| GEMMA["🔒 GemmaLocalProvider\n(Gemma 2 via Ollama / vLLM\n100% Air-Gapped)"]
+        ENGINE -->|Local Edge HTTP / Stream| GEMMA["🔒 GemmaLocalProvider\n(Gemma 4 via Ollama / vLLM\n100% Air-Gapped)"]
         ENGINE -->|Simulation / CI| MOCK["🧪 MockStreamingProvider\n(Deterministic Octalingual Engine)"]
         
         GLOSSARY["📚 Technical Glossary Engine\n(Regex Replacements & Contextual Biasing)"] -.->|Inject Context| GEMINI
@@ -78,7 +78,7 @@ flowchart TD
 [AudioNormalizer + RingBuffer] ──(Silence Truncation & Level Metering)
        │
        ▼
-[TranscriptionProvider] ──(Inference via Gemini Live Bidi or Gemma 2 Edge)
+[TranscriptionProvider] ──(Inference via Gemini Live Bidi or Gemma 4 Edge)
        │
        ▼
 [PubSubBroker (Redis / In-Memory)] ──(Channel: loce:room:{roomId})
@@ -94,15 +94,20 @@ flowchart TD
 
 LOCE permite alternar en tiempo de ejecución o por configuración de entorno entre inferencia de vanguardia en la nube y ejecución soberana 100% on-premise:
 
-| Capacidad | ⚡ Google Gemini Live API | 🔒 Gemma 2 On-Premise (Edge) | 🧪 Mock Simulation Engine |
+| Capacidad | ⚡ Google Gemini Live API | 🔒 Gemma 4 On-Premise (Edge) | 🧪 Mock Simulation Engine |
 | :--- | :--- | :--- | :--- |
 | **Entorno de Ejecución** | Google Cloud AI Hypercomputer | Servidor Local / GPU Edge / Air-Gapped | En memoria local / Offline CI/CD |
 | **Soberanía y Privacidad** | Conexión saliente cifrada TLS | **100% On-Premise (Zero Data Egress)** | Totalmente sintético |
 | **Protocolo de Inferencia** | WebSocket `BidiGenerateContent` | Streaming Token-by-Token (Ollama / vLLM) | Async loop determinístico |
-| **Modelo Recomendado** | `models/gemini-3.5-transcribe-live` | `gemma2:2b` / `gemma:2b` | Script pre-compilado de conferencia |
+| **Modelo Recomendado** | `models/gemini-3.5-transcribe-live` | `gemma4:2b` / `gemma4:4b` / `gemma4:12b` | Script pre-compilado de conferencia |
 | **Idiomas Simultáneos** | 8 (EN, ES, PT, FR, DE, IT, RU, ZH) | 8 (EN, ES, PT, FR, DE, IT, RU, ZH) | 8 (EN, ES, PT, FR, DE, IT, RU, ZH) |
-| **Glosario Técnico** | Inyección en System Instructions | Inyección en System Prompt de Gemma | Mapeo por diccionario de regex |
+| **Glosario Técnico** | Inyección en System Instructions | Inyección en System Prompt de Gemma 4 | Mapeo por diccionario de regex |
 | **Requisitos Hardware** | `GEMINI_API_KEY` (sin GPU local) | GPU NVIDIA / Apple Silicon / CPU AVX2 | Cero dependencias externas |
+
+### 🛡️ Ventajas Técnicas de la Generación Gemma 4 en LOCE
+- **Arquitecturas Edge y Densas Optimizadas**: Soporte nativo para modelos `2B` y `4B` (eficiencia extrema en laptops de producción, servidores edge y procesadores sin GPU dedicada) y `12B` unificado / `31B` denso para clústeres on-premise de máxima fidelidad.
+- **Ventana de Contexto Extendido de 256k Tokens**: Procesa y retiene el hilo discursivo completo de keynotes y conferencias prolongadas sin degradación, truncamiento ni pérdida del vocabulario técnico contextualizado.
+- **Inferencia Soberana y Air-Gapped**: Cero salida a internet y total aislamiento de datos, ideal para conferencias privadas, auditorías corporativas y transmisiones con requisitos estrictos de confidencialidad.
 
 ---
 
@@ -289,15 +294,15 @@ cp .env.example .env
 
 #### 2. Seleccionar Modo de Inferencia en `.env`
 
-**Modo 100% Local Air-Gapped (Gemma 2 via Ollama):**
+**Modo 100% Local Air-Gapped (Gemma 4 via Ollama):**
 ```bash
 # Iniciar modelo local
-ollama run gemma2:2b
+ollama run gemma4:2b
 
 # Configurar en .env
 DEFAULT_PROVIDER=gemma
 GEMMA_BASE_URL=http://localhost:11434
-GEMMA_MODEL=gemma2:2b
+GEMMA_MODEL=gemma4:2b
 ```
 
 **Modo Cloud (Google Gemini Live API):**

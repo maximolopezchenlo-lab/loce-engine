@@ -7,6 +7,7 @@ export const STORAGE_KEYS = {
   GEMINI_API_KEY: "loce_gemini_api_key",
   PROVIDER_MODE: "loce_provider_mode",
   GEMMA_ENDPOINT: "loce_gemma_endpoint",
+  GEMMA_MODEL: "loce_gemma_model",
   BACKEND_URL: "loce_backend_url",
   HAS_ONBOARDED: "loce_has_onboarded",
 } as const;
@@ -17,6 +18,7 @@ export interface LoceConfig {
   apiKey: string;
   providerMode: ProviderMode;
   gemmaEndpoint: string;
+  gemmaModel: string;
   backendUrl: string;
   hasOnboarded: boolean;
 }
@@ -27,6 +29,7 @@ export function getConfig(): LoceConfig {
       apiKey: "",
       providerMode: "gemini",
       gemmaEndpoint: "http://localhost:11434",
+      gemmaModel: "gemma4:2b",
       backendUrl: "",
       hasOnboarded: false,
     };
@@ -40,11 +43,13 @@ export function getConfig(): LoceConfig {
       : "gemini";
   const gemmaEndpoint =
     localStorage.getItem(STORAGE_KEYS.GEMMA_ENDPOINT) || "http://localhost:11434";
+  const gemmaModel =
+    localStorage.getItem(STORAGE_KEYS.GEMMA_MODEL) || "gemma4:2b";
   const backendUrl = localStorage.getItem(STORAGE_KEYS.BACKEND_URL) || "";
   const hasOnboarded =
     localStorage.getItem(STORAGE_KEYS.HAS_ONBOARDED) === "true";
 
-  return { apiKey, providerMode, gemmaEndpoint, backendUrl, hasOnboarded };
+  return { apiKey, providerMode, gemmaEndpoint, gemmaModel, backendUrl, hasOnboarded };
 }
 
 export function saveConfig(updates: Partial<LoceConfig>): void {
@@ -61,6 +66,9 @@ export function saveConfig(updates: Partial<LoceConfig>): void {
       STORAGE_KEYS.GEMMA_ENDPOINT,
       updates.gemmaEndpoint.trim()
     );
+  }
+  if (updates.gemmaModel !== undefined) {
+    localStorage.setItem(STORAGE_KEYS.GEMMA_MODEL, updates.gemmaModel.trim());
   }
   if (updates.backendUrl !== undefined) {
     localStorage.setItem(STORAGE_KEYS.BACKEND_URL, updates.backendUrl.trim());

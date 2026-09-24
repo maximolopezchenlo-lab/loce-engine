@@ -114,7 +114,8 @@ class RoomSession:
                 return MockStreamingProvider()
         elif provider_type == "gemma":
             try:
-                return GemmaLocalProvider(sample_rate=self.sample_rate)
+                gemma_model = os.getenv("GEMMA_MODEL", "gemma4:2b")
+                return GemmaLocalProvider(sample_rate=self.sample_rate, model=gemma_model)
             except Exception as e:
                 logger.warning(f"Failed to instantiate GemmaLocalProvider: {e}. Falling back to MockStreamingProvider.")
                 return MockStreamingProvider()

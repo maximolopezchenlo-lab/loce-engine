@@ -15,7 +15,7 @@ from server.services.room_service import RoomService
 
 @pytest.mark.asyncio
 async def test_gemma_provider_system_instruction():
-    provider = GemmaLocalProvider(base_url="http://localhost:11434", model="gemma2:2b")
+    provider = GemmaLocalProvider(base_url="http://localhost:11434", model="gemma4:2b")
     config = TranscriptionConfig(
         room_id="on-prem-room",
         source_language="en",
@@ -37,7 +37,7 @@ async def test_gemma_provider_system_instruction():
 @pytest.mark.asyncio
 async def test_gemma_provider_fallback_emissions_when_offline():
     """Verify provider does not crash when local Gemma runtime is offline and emits fallback captions."""
-    provider = GemmaLocalProvider(base_url="http://127.0.0.1:9999", model="gemma2:2b")
+    provider = GemmaLocalProvider(base_url="http://127.0.0.1:9999", model="gemma4:2b")
     events: list[CaptionEvent] = []
 
     async def _on_event(event: CaptionEvent):
@@ -92,7 +92,7 @@ async def test_gemma_provider_fallback_emissions_when_offline():
 @pytest.mark.asyncio
 async def test_gemma_provider_streaming_ollama_mock():
     """Verify streaming token consumption and JSON parsing with mocked Ollama API."""
-    provider = GemmaLocalProvider(base_url="http://localhost:11434", model="gemma2:2b")
+    provider = GemmaLocalProvider(base_url="http://localhost:11434", model="gemma4:2b")
     events: list[CaptionEvent] = []
 
     async def _on_event(event: CaptionEvent):
@@ -164,7 +164,10 @@ async def test_room_service_creates_gemma_provider():
     room = await room_service.get_or_create_room("gemma-stage", provider_type="gemma")
     assert room.provider_type == "gemma"
     assert isinstance(room.provider, GemmaLocalProvider)
-    assert room.provider.model == "gemma2:2b"
+    assert room.provider.model == "gemma4:2b"
+
+    default_provider = GemmaLocalProvider()
+    assert default_provider.model == "gemma4:2b"
 
     await room_service.stop_room("gemma-stage")
     await broker.close()

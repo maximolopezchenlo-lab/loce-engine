@@ -1,8 +1,14 @@
-"""Local On-Premise Gemma Provider for air-gapped / private conference streaming.
+"""Local On-Premise Gemma 4 Provider for air-gapped / private conference streaming.
 
 Connects to a local runtime (Ollama at http://localhost:11434, vLLM, or any
 OpenAI-compatible local server) for streaming simultaneous transcription and
-trilingual translation (EN, ES, PT) with technical glossary injection.
+octalingual translation (EN, ES, PT, FR, DE, IT, RU, ZH) with technical glossary injection.
+
+Supports the Gemma 4 generation architectures:
+- Gemma 4 2B and 4B Edge models: optimized for ultra-low latency on-device inference and edge servers.
+- Gemma 4 12B Unified model: balanced multimodal, high-fidelity translation, and instruction following.
+- Gemma 4 31B Dense model: high-capacity reasoning and dense multilingual translations.
+- Extended context window of up to 256k tokens: retains comprehensive conference session history without degradation.
 """
 
 from __future__ import annotations
@@ -28,7 +34,8 @@ from core.engine.base import (
 logger = logging.getLogger("loce.gemma_local")
 
 DEFAULT_BASE_URL = "http://localhost:11434"
-DEFAULT_MODEL = "gemma2:2b"
+DEFAULT_GEMMA_MODEL = "gemma4:2b"
+DEFAULT_MODEL = DEFAULT_GEMMA_MODEL
 
 # Pre-packaged tech conference speech utterances for acoustic fallback in 8 languages
 SPEECH_UTTERANCES = [
@@ -86,7 +93,11 @@ SPEECH_UTTERANCES = [
 
 
 class GemmaLocalProvider(TranscriptionProvider):
-    """Air-gapped on-premise inference provider using local Gemma models."""
+    """Air-gapped on-premise inference provider using local Gemma 4 models.
+
+    Supports Gemma 4 architectures (2B/4B Edge, 12B Unified, 31B Dense)
+    with edge efficiency and up to 256k token context window.
+    """
 
     def __init__(
         self,
@@ -96,7 +107,7 @@ class GemmaLocalProvider(TranscriptionProvider):
         api_key: Optional[str] = None,
     ) -> None:
         self.base_url = (base_url or os.getenv("GEMMA_BASE_URL", DEFAULT_BASE_URL)).rstrip("/")
-        self.model = model or os.getenv("GEMMA_MODEL", DEFAULT_MODEL)
+        self.model = model or os.getenv("GEMMA_MODEL", DEFAULT_GEMMA_MODEL)
         self.sample_rate = sample_rate
         self.api_key = api_key or os.getenv("GEMMA_API_KEY", "")
 

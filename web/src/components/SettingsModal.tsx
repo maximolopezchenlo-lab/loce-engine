@@ -37,6 +37,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
   const [gemmaEndpoint, setGemmaEndpoint] = useState("http://localhost:11434");
+  const [gemmaModel, setGemmaModel] = useState("gemma4:2b");
   const [backendUrl, setBackendUrl] = useState("");
   const [savedSuccess, setSavedSuccess] = useState(false);
 
@@ -46,6 +47,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setProviderMode(cfg.providerMode);
       setApiKey(cfg.apiKey);
       setGemmaEndpoint(cfg.gemmaEndpoint);
+      setGemmaModel(cfg.gemmaModel || "gemma4:2b");
       setBackendUrl(cfg.backendUrl);
       setSavedSuccess(false);
     }
@@ -59,6 +61,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       providerMode,
       apiKey: apiKey.trim(),
       gemmaEndpoint: gemmaEndpoint.trim(),
+      gemmaModel: gemmaModel.trim() || "gemma4:2b",
       backendUrl: backendUrl.trim(),
       hasOnboarded: true,
     });
@@ -177,7 +180,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
               </button>
 
-              {/* Gemma 2 Local */}
+              {/* Gemma 4 Local */}
               <button
                 type="button"
                 onClick={() => setProviderMode("gemma")}
@@ -199,7 +202,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-white">
-                      🔒 Gemma 2 Local (Air-Gapped)
+                      🔒 Gemma 4 Local (Edge / Air-Gapped)
                     </span>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                       100% On-Premise
@@ -301,29 +304,55 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           )}
 
           {providerMode === "gemma" && (
-            <div className="p-4 rounded-xl bg-slate-800/60 border border-slate-700/70 space-y-3 animate-in fade-in-50 duration-150">
-              <label
-                htmlFor="gemma-endpoint"
-                className="text-xs font-semibold text-slate-300 flex items-center gap-1.5"
-              >
-                <Server className="w-3.5 h-3.5 text-emerald-400" />
-                Endpoint Local de Gemma (Ollama / vLLM)
-              </label>
-              <input
-                id="gemma-endpoint"
-                type="text"
-                value={gemmaEndpoint}
-                onChange={(e) => setGemmaEndpoint(e.target.value)}
-                placeholder="http://localhost:11434"
-                className="w-full px-3.5 py-2.5 text-sm rounded-lg bg-slate-900 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all font-mono"
-              />
-              <p className="text-[11px] text-slate-400">
-                Asegurate de haber ejecutado{" "}
-                <code className="px-1.5 py-0.5 rounded bg-slate-900 text-emerald-400 font-mono text-[10px]">
-                  ollama run gemma2:2b
-                </code>{" "}
-                en tu terminal.
-              </p>
+            <div className="p-4 rounded-xl bg-slate-800/60 border border-slate-700/70 space-y-3.5 animate-in fade-in-50 duration-150">
+              <div>
+                <label
+                  htmlFor="gemma-endpoint"
+                  className="text-xs font-semibold text-slate-300 flex items-center gap-1.5"
+                >
+                  <Server className="w-3.5 h-3.5 text-emerald-400" />
+                  Endpoint Local de Gemma 4 (Ollama / vLLM)
+                </label>
+                <input
+                  id="gemma-endpoint"
+                  type="text"
+                  value={gemmaEndpoint}
+                  onChange={(e) => setGemmaEndpoint(e.target.value)}
+                  placeholder="http://localhost:11434"
+                  className="w-full mt-1.5 px-3.5 py-2.5 text-sm rounded-lg bg-slate-900 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all font-mono"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="gemma-model"
+                  className="text-xs font-semibold text-slate-300 flex items-center gap-1.5"
+                >
+                  <Cpu className="w-3.5 h-3.5 text-emerald-400" />
+                  Modelo de Gemma 4
+                </label>
+                <input
+                  id="gemma-model"
+                  type="text"
+                  value={gemmaModel}
+                  onChange={(e) => setGemmaModel(e.target.value)}
+                  placeholder="gemma4:2b"
+                  className="w-full mt-1.5 px-3.5 py-2.5 text-sm rounded-lg bg-slate-900 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all font-mono"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Compatible con Gemma 4 (2B/4B Edge y 12B Unificado) vía Ollama o vLLM.
+                </p>
+              </div>
+
+              <div className="pt-1 border-t border-slate-700/50">
+                <p className="text-[11px] text-slate-400">
+                  Asegurate de haber ejecutado{" "}
+                  <code className="px-1.5 py-0.5 rounded bg-slate-900 text-emerald-400 font-mono text-[10px]">
+                    ollama run gemma4:2b
+                  </code>{" "}
+                  en tu terminal.
+                </p>
+              </div>
             </div>
           )}
 

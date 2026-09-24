@@ -47,6 +47,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             "GEMINI_API_KEY is not set. Defaulting provider to 'mock' for local offline testing."
         )
         default_provider = "mock"
+    elif default_provider == "gemma":
+        gemma_model = os.getenv("GEMMA_MODEL", "gemma4:2b")
+        logger.info(
+            f"Configured on-premise Gemma 4 local engine (GEMMA_MODEL={gemma_model}, context=up to 256k tokens)."
+        )
 
 
     room_service = RoomService(
