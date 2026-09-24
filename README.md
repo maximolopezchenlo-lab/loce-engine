@@ -1,15 +1,33 @@
 # LiveVoice Open-Caption Engine (LOCE)
 
+[![Release: v0.2.0](https://img.shields.io/badge/Release-v0.2.0-blue.svg)](https://github.com/livevoice/loce/releases)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![React 19](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev/)
 [![End-to-End Latency <15ms (P95)](https://img.shields.io/badge/P95_Latency-13.47ms-brightgreen.svg)]()
 [![Concurrent Multi-Room](https://img.shields.io/badge/10+_Stages-100%25_Passing-brightgreen.svg)]()
+[![Test Suite](https://img.shields.io/badge/Tests-27%20Passed%20(100%25)-brightgreen.svg)]()
 [![Languages](https://img.shields.io/badge/Languages-EN%20%7C%20ES%20%7C%20PT-orange.svg)]()
+[![Engines](https://img.shields.io/badge/Engines-Gemini%20Live%20%7C%20Gemma%202%20Local-purple.svg)]()
 
 **LOCE (LiveVoice Open-Caption Engine)** is an enterprise-grade, open-source distributed engine for **real-time audio transcription and simultaneous trilingual translation** (English, Spanish, Portuguese) targeting high-concurrency tech conferences, keynotes, and hybrid event broadcasts.
 
 LOCE replaces costly, vendor-locked proprietary captioning systems with an open, self-hosted, ultra-low-latency architecture capable of orchestrating **10 to 20+ concurrent stages** in parallel while serving thousands of simultaneous broadcast overlays and audience viewers.
+
+---
+
+## ⚡ Arquitectura Híbrida: Cloud vs. On-Premise
+
+LOCE permite alternar o combinar libremente motores de inferencia según los requisitos de conectividad, privacidad y costos de cada escenario:
+
+| Característica | ⚡ Gemini Multimodal Live API | 🔒 Gemma 2 On-Premise (Edge) | 🧪 Mock Simulator |
+| :--- | :--- | :--- | :--- |
+| **Entorno** | Nube de Google AI | Local / Edge / Air-Gapped | Local / Offline CI/CD |
+| **Privacidad** | Streaming seguro TLS | **100% On-Premise (Zero Egress)** | Totalmente sintético |
+| **Runtime** | `BidiGenerateContent` WebSocket | Ollama / vLLM / OpenAI API | In-Memory Async Task |
+| **Modelo** | `models/gemini-3.5-transcribe-live` | `gemma2:2b` / `gemma:2b` | Script pre-empaquetado |
+| **Idiomas** | EN, ES, PT simultáneo | EN, ES, PT simultáneo | EN, ES, PT simultáneo |
+| **Requisito** | `GEMINI_API_KEY` | GPU/CPU local (Ollama instalado) | Ninguno (Zero Config) |
 
 ---
 
@@ -42,9 +60,25 @@ Validado con el arnés de estrés automatizado (`scripts/stress_test.py --rooms 
 
 ---
 
-## 🌐 Arquitectura Trilingüe Simultánea (EN, ES, PT)
+## 🎙️ Live Audio Broadcaster en el Navegador
 
-LOCE incorpora un pipeline trilingüe que procesa el audio del orador y emite simultáneamente subtítulos en el idioma original y traducciones concurrentes:
+LOCE incluye un módulo de transmisión de audio integrado directamente en el navegador ([`useAudioIngest.ts`](web/src/hooks/useAudioIngest.ts) y [`AudioIngestPanel.tsx`](web/src/components/AudioIngestPanel.tsx)), permitiendo a conferencistas u operadores emitir audio en tiempo real sin instalar software adicional ni OBS:
+
+1. **Modo Micrófono en Vivo**:
+   - Captura vía `navigator.mediaDevices.getUserMedia` con cancelación de eco y supresión de ruido.
+   - Downsampling en cliente desde 44.1kHz / 48kHz nativos a **Linear PCM 16-bit mono a 16,000 Hz** con filtro de decimation anti-aliasing.
+   - Envío binario en bloques de 200ms (6,400 bytes) hacia `/ws/ingest/:roomId`.
+   - **VU Meter Reactivo**: Barra de volumen continua en tiempo real calculada mediante RMS con gradiente dinámico (Esmeralda &rarr; Ámbar &rarr; Carmesí).
+2. **Modo Archivo de Audio (WAV / MP3 / OGG)**:
+   - Carga por selección o arrastrar y soltar (drag-and-drop).
+   - Decodificación con `AudioContext.decodeAudioData` y conversión mono a 16kHz.
+   - Emisión a **velocidad real 1x** con controles de Reproducir, Pausar, Detener y barra de progreso.
+3. **Carga en 1 Clic de Audio Demo**:
+   - Botón *"Cargar Audio de Demostración"* para importar y transmitir instantáneamente el archivo de prueba `sample_talk.wav`.
+
+---
+
+## 🌐 Arquitectura Trilingüe Simultánea (EN, ES, PT)
 
 ```
                   ┌──────────────────────┐
@@ -55,7 +89,7 @@ LOCE incorpora un pipeline trilingüe que procesa el audio del orador y emite si
                              ▼
                   ┌──────────────────────┐
                   │ Pipeline de Inferencia│
-                  │ (Gemini Live / Mock) │
+                  │ (Gemini Live / Gemma)│
                   └──────────┬───────────┘
          ┌───────────────────┼───────────────────┐
          ▼                   ▼                   ▼
@@ -83,10 +117,10 @@ flowchart LR
         AN["Mic Stage N"] -->|WS /ws/ingest/stage-N| IN["Ingest Worker"]
     end
 
-    subgraph Inference["Pipeline de Inferencia"]
-        I1 --> Inf1["Gemini Live Session"]
-        I2 --> Inf2["Gemini Live Session"]
-        IN --> InfN["Gemini Live Session"]
+    subgraph Inference["Pipeline de Inferencia Híbrida"]
+        I1 --> Inf1["Gemini Live / Gemma Local"]
+        I2 --> Inf2["Gemini Live / Gemma Local"]
+        IN --> InfN["Gemini Live / Gemma Local"]
     end
 
     subgraph Bus["Message Bus Distribuido"]
@@ -146,6 +180,7 @@ LOCE cuenta con una vista dedicada de superposición (`/overlay/:roomId`) con fo
 
 El panel de administración (`/admin`) incluye una **Matriz de Operaciones de Alta Densidad** diseñada para supervisar decenas de salas concurrentes desde una sola pantalla:
 
+- **Telemetría de Inferencia Activa**: Contadores en cabecera de salas activas por motor (`⚡ Gemini Live`, `🔒 Gemma On-Premise`, `🧪 Mock`).
 - **Semáforos de Estado en Tiempo Real**:
   - 🟢 **Óptimo**: Latencia de procesamiento `< 50 ms`.
   - 🟡 **Normal**: Latencia de procesamiento `50 ms – 200 ms`.
@@ -160,7 +195,7 @@ El panel de administración (`/admin`) incluye una **Matriz de Operaciones de Al
 ```text
 ├── core/
 │   ├── ingestion/       # Normalización PCM 16kHz, ring buffer y remuestreo
-│   ├── engine/          # Provider Gemini Live Bidi WS, MockProvider trilingüe
+│   ├── engine/          # Provider Gemini Live Bidi WS, GemmaLocalProvider, MockProvider
 │   ├── glossary/        # Glosario técnico y corrección fonética en vuelo
 │   └── exporters/       # Generadores de subtítulos SRT, WebVTT y texto plano
 ├── server/
@@ -168,8 +203,8 @@ El panel de administración (`/admin`) incluye una **Matriz de Operaciones de Al
 │   ├── services/        # Orquestador de salas y ciclo de vida de sesiones
 │   └── pubsub/          # Broker Redis Pub/Sub distribuido con fallback local
 ├── web/                 # Frontend React 19 + TypeScript + Vite + Tailwind CSS
-│   ├── src/components/  # AudienceView, ObsOverlay, AdminDashboard (NOC Matrix)
-│   └── src/hooks/       # useCaptionStream (WebSocket stream con reconexión)
+│   ├── src/components/  # AudienceView, ObsOverlay, AdminDashboard, AudioIngestPanel
+│   └── src/hooks/       # useCaptionStream, useAudioIngest (Web Audio API)
 ├── fixtures/            # Audios de prueba PCM 16kHz
 ├── scripts/             # Runner de simulación y arnés de estrés multi-sala
 ├── tests/               # Suite completa de tests unitarios e integración (pytest)
@@ -193,16 +228,39 @@ pip install -r requirements.txt
 
 # Configurar variables de entorno
 cp .env.example .env
-# Si utilizas Gemini Live, configurá GEMINI_API_KEY en .env
-# Si utilizas Redis Pub/Sub, configurá REDIS_URL=redis://localhost:6379/0
 ```
 
-### 2. Ejecutar Tests Automatizados
+### 2. Configuración de Motor de Inferencia
+
+#### Opción A: Modo 100% Local Air-Gapped con Gemma 2 (Recomendado On-Premise)
+```bash
+# 1. Iniciar runtime de Ollama con Gemma 2
+ollama run gemma2:2b
+
+# 2. Configurar en .env:
+DEFAULT_PROVIDER=gemma
+GEMMA_BASE_URL=http://localhost:11434
+GEMMA_MODEL=gemma2:2b
+```
+
+#### Opción B: Modo Cloud con Google Gemini Live
+```bash
+# Configurar en .env:
+DEFAULT_PROVIDER=gemini
+GEMINI_API_KEY=tu_clave_de_api_aqui
+```
+
+#### Opción C: Modo Mock (Zero Config / Offline)
+```bash
+DEFAULT_PROVIDER=mock
+```
+
+### 3. Ejecutar Tests Automatizados
 ```bash
 pytest -v
 ```
 
-### 3. Compilar Frontend
+### 4. Compilar Frontend
 ```bash
 cd web
 npm install
@@ -210,7 +268,7 @@ npm run build
 cd ..
 ```
 
-### 4. Iniciar Servidor LOCE
+### 5. Iniciar Servidor LOCE
 ```bash
 uvicorn server.main:app --host 0.0.0.0 --port 8000
 ```
