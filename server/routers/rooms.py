@@ -6,6 +6,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
+from core.engine.base import SUPPORTED_LANGUAGES
 from core.glossary.glossary import TechnicalGlossary
 
 router = APIRouter(prefix="/api/rooms", tags=["Rooms"])
@@ -15,7 +16,7 @@ class CreateRoomRequest(BaseModel):
     room_id: str = Field(..., min_length=2, max_length=50)
     name: Optional[str] = None
     source_language: str = "en"
-    target_languages: list[str] = Field(default_factory=lambda: ["es", "en", "pt"])
+    target_languages: list[str] = Field(default_factory=lambda: list(SUPPORTED_LANGUAGES))
     provider_type: Optional[str] = None
 
 

@@ -149,37 +149,30 @@ export const AudienceView: React.FC<AudienceViewProps> = ({
           {/* Controls: Language, Font, Contrast, Downloads */}
           <div className="flex items-center flex-wrap gap-2">
             {/* Language Selector */}
-            <div className="flex items-center rounded-lg p-1 bg-slate-800/50 border border-slate-700/60">
-              <button
-                onClick={() => setLang("es")}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                  lang === "es"
-                    ? "bg-indigo-600 text-white shadow"
-                    : "opacity-70 hover:opacity-100"
-                }`}
-              >
-                Español (ES)
-              </button>
-              <button
-                onClick={() => setLang("en")}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                  lang === "en"
-                    ? "bg-indigo-600 text-white shadow"
-                    : "opacity-70 hover:opacity-100"
-                }`}
-              >
-                English (EN)
-              </button>
-              <button
-                onClick={() => setLang("pt")}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                  lang === "pt"
-                    ? "bg-indigo-600 text-white shadow"
-                    : "opacity-70 hover:opacity-100"
-                }`}
-              >
-                Português (PT)
-              </button>
+            <div className="flex items-center flex-wrap gap-1 rounded-lg p-1 bg-slate-800/50 border border-slate-700/60">
+              {[
+                { code: "es", label: "ES", title: "Español" },
+                { code: "en", label: "EN", title: "English" },
+                { code: "pt", label: "PT", title: "Português" },
+                { code: "fr", label: "FR", title: "Français" },
+                { code: "de", label: "DE", title: "Deutsch" },
+                { code: "it", label: "IT", title: "Italiano" },
+                { code: "ru", label: "RU", title: "Русский" },
+                { code: "zh", label: "ZH", title: "中文" },
+              ].map((item) => (
+                <button
+                  key={item.code}
+                  onClick={() => setLang(item.code)}
+                  title={item.title}
+                  className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+                    lang === item.code
+                      ? "bg-indigo-600 text-white shadow"
+                      : "opacity-70 hover:opacity-100 text-slate-300"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
             </div>
 
             {/* Font Sizing */}

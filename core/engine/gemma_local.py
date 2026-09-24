@@ -20,6 +20,7 @@ from core.engine.base import (
     AudioChunk,
     CaptionCallback,
     CaptionEvent,
+    SUPPORTED_LANGUAGES,
     TranscriptionConfig,
     TranscriptionProvider,
 )
@@ -29,32 +30,57 @@ logger = logging.getLogger("loce.gemma_local")
 DEFAULT_BASE_URL = "http://localhost:11434"
 DEFAULT_MODEL = "gemma2:2b"
 
-# Pre-packaged tech conference speech utterances for acoustic fallback
+# Pre-packaged tech conference speech utterances for acoustic fallback in 8 languages
 SPEECH_UTTERANCES = [
     {
         "en": "Welcome everyone to our keynote session on distributed systems.",
         "es": "Bienvenidos a todos a nuestra sesión magistral sobre sistemas distribuidos.",
         "pt": "Bem-vindos a todos à nossa sessão principal sobre sistemas distribuídos.",
+        "fr": "Bienvenue à tous à notre session plénière sur les systèmes distribués.",
+        "de": "Willkommen alle zu unserer Keynote-Session über verteilte Systeme.",
+        "it": "Benvenuti a tutti alla nostra sessione plenaria sui sistemi distribuiti.",
+        "ru": "Добро пожаловать на пленарное заседание по распределенным системам.",
+        "zh": "欢迎大家参加关于分布式系统的主题演讲。",
     },
     {
         "en": "Today we are deploying Kubernetes clusters across multiple edge data centers.",
         "es": "Hoy estamos desplegando clústeres de Kubernetes en múltiples centros de datos perimetrales.",
         "pt": "Hoje estamos implantando clusters Kubernetes em múltiplos data centers de borda.",
+        "fr": "Aujourd'hui, nous déployons des clusters Kubernetes sur plusieurs centres de données périphériques.",
+        "de": "Heute stellen wir Kubernetes-Cluster über mehrere Edge-Rechenzentren hinweg bereit.",
+        "it": "Oggi distribuiamo cluster Kubernetes su più data center periferici.",
+        "ru": "Сегодня мы развертываем кластеры Kubernetes в нескольких периферийных центрах обработки данных.",
+        "zh": "今天我们跨多个边缘数据中心部署 Kubernetes 集群。",
     },
     {
         "en": "Our microservices communicate using ultra low latency gRPC over HTTP/2.",
         "es": "Nuestros microservicios se comunican usando gRPC de latencia ultrabaja sobre HTTP/2.",
         "pt": "Nossos microsserviços se comunicam usando gRPC de latência ultrabaixa sobre HTTP/2.",
+        "fr": "Nos microservices communiquent via gRPC à ultra-faible latence sur HTTP/2.",
+        "de": "Unsere Microservices kommunizieren über gRPC mit extrem geringer Latenz über HTTP/2.",
+        "it": "I nostri microservizi comunicano utilizzando gRPC a bassissima latenza su HTTP/2.",
+        "ru": "Наши микросервисы взаимодействуют по gRPC со сверхнизкой задержкой по протоколу HTTP/2.",
+        "zh": "我们的微服务通过 HTTP/2 上的超低延迟 gRPC 进行通信。",
     },
     {
         "en": "FastAPI and Redis PubSub handle thousands of concurrent audio streams.",
         "es": "FastAPI y Redis PubSub gestionan miles de transmisiones de audio simultáneas.",
         "pt": "FastAPI e Redis PubSub lidam com milhares de transmissões de áudio simultâneas.",
+        "fr": "FastAPI et Redis PubSub gèrent des milliers de flux audio simultanés.",
+        "de": "FastAPI und Redis PubSub verwalten Tausende gleichzeitiger Audiostreams.",
+        "it": "FastAPI e Redis PubSub gestiscono migliaia di flussi audio concorrenti.",
+        "ru": "FastAPI и Redis PubSub обрабатывают тысячи одновременных аудиопотоков.",
+        "zh": "FastAPI 和 Redis PubSub 处理数千个并发音频流。",
     },
     {
         "en": "Thank you for joining us, we will now open the floor for questions.",
         "es": "Gracias por acompañarnos, ahora abrimos el espacio para preguntas.",
         "pt": "Obrigado por nos acompanhar, agora abrimos espaço para perguntas.",
+        "fr": "Merci d'avoir été des nôtres, nous ouvrons maintenant la séance aux questions.",
+        "de": "Vielen Dank für Ihre Teilnahme, wir eröffnen nun die Fragerunde.",
+        "it": "Grazie per esservi uniti a noi, ora apriamo lo spazio per le domande.",
+        "ru": "Спасибо за участие, теперь мы открываем сессию вопросов и ответов.",
+        "zh": "感谢大家的参与，现在进入问答环节。",
     },
 ]
 
@@ -108,8 +134,9 @@ class GemmaLocalProvider(TranscriptionProvider):
         return (
             "You are LiveVoice Open-Caption Engine (LOCE), an on-premise simultaneous conference translator.\n"
             "INPUT: Spoken utterance transcript from keynote/technical speaker.\n"
-            "OUTPUT FORMAT: Return STRICT JSON containing simultaneous translations for English, Spanish, and Portuguese:\n"
-            '{"en": "<English>", "es": "<Spanish>", "pt": "<Portuguese>", "speaker": "Speaker"}\n'
+            "OUTPUT FORMAT: Return STRICT JSON containing simultaneous translations for all 8 supported languages:\n"
+            '{"en": "<English>", "es": "<Spanish>", "pt": "<Portuguese>", "fr": "<French>", '
+            '"de": "<German>", "it": "<Italian>", "ru": "<Russian>", "zh": "<Chinese>", "speaker": "Speaker"}\n'
             f"{glossary_hint}{speakers_hint}\n"
             "Do not include explanations or markdown fences, output single-line JSON only."
         )
@@ -284,31 +311,26 @@ class GemmaLocalProvider(TranscriptionProvider):
 
             # Select current utterance base
             current_script = SPEECH_UTTERANCES[self._utterance_index % len(SPEECH_UTTERANCES)]
-            en_words = current_script["en"].split()
-            es_words = current_script["es"].split()
-            pt_words = current_script["pt"].split()
 
             # Emit live progressive partials during accumulation (<200ms latency)
             fraction = min(1.0, accumulated_chunks / chunks_per_utterance)
-            en_partial = " ".join(en_words[: max(1, int(len(en_words) * fraction))])
-            es_partial = " ".join(es_words[: max(1, int(len(es_words) * fraction))])
-            pt_partial = " ".join(pt_words[: max(1, int(len(pt_words) * fraction))])
 
-            if "en" in self._config.target_languages:
-                await self._emit_event("en", en_partial, is_final=False)
-            if "es" in self._config.target_languages:
-                await self._emit_event("es", es_partial, is_final=False)
-            if "pt" in self._config.target_languages:
-                await self._emit_event("pt", pt_partial, is_final=False)
+            for target_lang in self._config.target_languages:
+                text = current_script.get(target_lang) or current_script.get("en", "")
+                if target_lang == "zh":
+                    chars = list(text)
+                    partial = "".join(chars[: max(1, int(len(chars) * fraction))])
+                else:
+                    words = text.split()
+                    partial = " ".join(words[: max(1, int(len(words) * fraction))])
+                await self._emit_event(target_lang, partial, is_final=False)
 
             # Segment complete: perform Gemma simultaneous translation & emit finals
             if accumulated_chunks >= chunks_per_utterance:
                 system_prompt = self._build_system_instruction(self._config)
                 user_prompt = f"Translate spoken utterance: '{current_script['en']}'"
 
-                final_en = current_script["en"]
-                final_es = current_script["es"]
-                final_pt = current_script["pt"]
+                final_translations = dict(current_script)
 
                 # If Gemma is connected, invoke streaming translation
                 if self._connected:
@@ -324,22 +346,17 @@ class GemmaLocalProvider(TranscriptionProvider):
                         if clean_json.endswith("```"):
                             clean_json = clean_json[:-3]
                         parsed = json.loads(clean_json.strip())
-                        if "es" in parsed:
-                            final_es = parsed["es"]
-                        if "pt" in parsed:
-                            final_pt = parsed["pt"]
-                        if "en" in parsed:
-                            final_en = parsed["en"]
+                        for lang in SUPPORTED_LANGUAGES:
+                            if lang in parsed and isinstance(parsed[lang], str):
+                                final_translations[lang] = parsed[lang]
                     except Exception:
                         pass
 
                 # Emit final caption events with millisecond timecodes
-                if "en" in self._config.target_languages:
-                    await self._emit_event("en", final_en, is_final=True, original_text=final_en)
-                if "es" in self._config.target_languages:
-                    await self._emit_event("es", final_es, is_final=True, original_text=final_en)
-                if "pt" in self._config.target_languages:
-                    await self._emit_event("pt", final_pt, is_final=True, original_text=final_en)
+                original_text = final_translations.get("en")
+                for target_lang in self._config.target_languages:
+                    text = final_translations.get(target_lang) or final_translations.get("en", "")
+                    await self._emit_event(target_lang, text, is_final=True, original_text=original_text)
 
                 # Reset for next sentence
                 accumulated_chunks = 0

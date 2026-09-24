@@ -41,15 +41,16 @@ async def export_session_transcript(
     )
 
     mime_map = {
-        ExportFormat.SRT: "application/x-subrip",
-        ExportFormat.VTT: "text/vtt",
+        ExportFormat.SRT: "application/x-subrip; charset=utf-8",
+        ExportFormat.VTT: "text/vtt; charset=utf-8",
         ExportFormat.TXT: "text/plain; charset=utf-8",
     }
-    media_type = mime_map.get(export_fmt, "text/plain")
+    media_type = mime_map.get(export_fmt, "text/plain; charset=utf-8")
     filename = f"{room_id}_{lang}.{export_fmt.value}"
 
     return Response(
-        content=content,
+        content=content.encode("utf-8"),
         media_type=media_type,
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+

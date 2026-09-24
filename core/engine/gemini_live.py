@@ -24,6 +24,7 @@ from core.engine.base import (
     AudioChunk,
     CaptionCallback,
     CaptionEvent,
+    SUPPORTED_LANGUAGES,
     TranscriptionConfig,
     TranscriptionProvider,
 )
@@ -58,9 +59,7 @@ class GeminiLiveProvider(TranscriptionProvider):
         self._receiver_task: Optional[asyncio.Task[None]] = None
 
         self._current_sentence_id: str = uuid.uuid4().hex[:8]
-        self._partial_buffer_es: str = ""
-        self._partial_buffer_en: str = ""
-        self._partial_buffer_pt: str = ""
+        self._partial_buffers: dict[str, str] = {lang: "" for lang in SUPPORTED_LANGUAGES}
         self._audio_time_ms: int = 0
         self._segment_start_ms: int = 0
 
@@ -95,9 +94,11 @@ class GeminiLiveProvider(TranscriptionProvider):
 
         return (
             "You are LiveVoice Open-Caption Engine (LOCE), an ultra-low latency conference captioner and translator.\n"
-            "INPUT: Continuous streaming speech audio in English, Spanish, or Portuguese.\n"
+            "INPUT: Continuous streaming speech audio in any supported conference language.\n"
             "OUTPUT FORMAT: For every spoken phrase, you MUST output a single-line JSON object per completed or ongoing thought:\n"
-            '{"en": "<English transcript>", "es": "<Spanish translation>", "pt": "<Portuguese translation>", "speaker": "<Identified speaker or Speaker>"}\n'
+            '{"en": "<English transcript>", "es": "<Spanish translation>", "pt": "<Portuguese translation>", '
+            '"fr": "<French translation>", "de": "<German translation>", "it": "<Italian translation>", '
+            '"ru": "<Russian translation>", "zh": "<Chinese translation>", "speaker": "<Identified speaker or Speaker>"}\n'
             "Strict guidelines:\n"
             "1. Output immediately with minimal latency (<500ms).\n"
             "2. Preserve technical precision, code keywords, and acronyms.\n"
@@ -122,9 +123,7 @@ class GeminiLiveProvider(TranscriptionProvider):
         self._current_sentence_id = uuid.uuid4().hex[:8]
         self._audio_time_ms = 0
         self._segment_start_ms = 0
-        self._partial_buffer_es = ""
-        self._partial_buffer_en = ""
-        self._partial_buffer_pt = ""
+        self._partial_buffers = {lang: "" for lang in SUPPORTED_LANGUAGES}
 
         # Connect to BidiGenerateContent WebSocket
         uri = f"wss://{GEMINI_LIVE_HOST}{GEMINI_LIVE_PATH}?key={self.api_key}"
@@ -254,24 +253,18 @@ class GeminiLiveProvider(TranscriptionProvider):
             return
 
         # Attempt JSON or structured line extraction
-        en_text, es_text, pt_text, speaker = self._parse_caption_text(raw_text)
+        lang_texts, speaker = self._parse_caption_text(raw_text)
 
-        if es_text:
-            self._partial_buffer_es += (" " if self._partial_buffer_es else "") + es_text
-        if en_text:
-            self._partial_buffer_en += (" " if self._partial_buffer_en else "") + en_text
-        if pt_text:
-            self._partial_buffer_pt += (" " if self._partial_buffer_pt else "") + pt_text
+        for lang, text_delta in lang_texts.items():
+            if text_delta:
+                current = self._partial_buffers.get(lang, "")
+                # Avoid space separation for Chinese ideograms if needed
+                sep = "" if lang == "zh" or not current else " "
+                self._partial_buffers[lang] = f"{current}{sep}{text_delta}"
 
         # Emit partial updates to subscribed viewers
         for target_lang in self._config.target_languages:
-            if target_lang.startswith("es"):
-                display_text = self._partial_buffer_es
-            elif target_lang.startswith("pt"):
-                display_text = self._partial_buffer_pt
-            else:
-                display_text = self._partial_buffer_en
-
+            display_text = self._partial_buffers.get(target_lang) or self._partial_buffers.get("en", "")
             if not display_text:
                 continue
 
@@ -281,7 +274,7 @@ class GeminiLiveProvider(TranscriptionProvider):
                 original_language=self._config.source_language,
                 target_language=target_lang,
                 text=display_text,
-                original_text=self._partial_buffer_en or None,
+                original_text=self._partial_buffers.get("en") or None,
                 is_final=False,
                 start_ms=self._segment_start_ms,
                 end_ms=self._audio_time_ms,
@@ -298,13 +291,7 @@ class GeminiLiveProvider(TranscriptionProvider):
         final_id = f"final-{self._current_sentence_id}-{uuid.uuid4().hex[:6]}"
 
         for target_lang in self._config.target_languages:
-            if target_lang.startswith("es"):
-                display_text = self._partial_buffer_es
-            elif target_lang.startswith("pt"):
-                display_text = self._partial_buffer_pt
-            else:
-                display_text = self._partial_buffer_en
-
+            display_text = self._partial_buffers.get(target_lang) or self._partial_buffers.get("en", "")
             if not display_text:
                 continue
 
@@ -314,7 +301,7 @@ class GeminiLiveProvider(TranscriptionProvider):
                 original_language=self._config.source_language,
                 target_language=target_lang,
                 text=display_text,
-                original_text=self._partial_buffer_en or None,
+                original_text=self._partial_buffers.get("en") or None,
                 is_final=True,
                 start_ms=self._segment_start_ms,
                 end_ms=self._audio_time_ms,
@@ -325,23 +312,26 @@ class GeminiLiveProvider(TranscriptionProvider):
         # Rotate sentence ID and reset buffers for next utterance
         self._current_sentence_id = uuid.uuid4().hex[:8]
         self._segment_start_ms = self._audio_time_ms
-        self._partial_buffer_es = ""
-        self._partial_buffer_en = ""
-        self._partial_buffer_pt = ""
+        self._partial_buffers = {lang: "" for lang in SUPPORTED_LANGUAGES}
 
-    def _parse_caption_text(self, raw: str) -> tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
-        """Extract trilingual text and optional speaker from model emission."""
+    def _parse_caption_text(self, raw: str) -> tuple[dict[str, str], Optional[str]]:
+        """Extract multi-language text and optional speaker from model emission."""
         raw_clean = raw.strip()
         # Case 1: Model returned clean JSON line
         if raw_clean.startswith("{") and raw_clean.endswith("}"):
             try:
                 data = json.loads(raw_clean)
-                return data.get("en"), data.get("es"), data.get("pt"), data.get("speaker")
+                speaker = data.get("speaker")
+                lang_map: dict[str, str] = {}
+                for lang in SUPPORTED_LANGUAGES:
+                    if lang in data and isinstance(data[lang], str):
+                        lang_map[lang] = data[lang]
+                return lang_map, speaker
             except Exception:
                 pass
 
         # Case 2: Plain text output
-        return raw_clean, raw_clean, raw_clean, None
+        return {lang: raw_clean for lang in SUPPORTED_LANGUAGES}, None
 
     async def stop(self) -> None:
         self._running = False

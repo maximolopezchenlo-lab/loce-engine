@@ -96,3 +96,37 @@ def test_txt_export():
 
     txt_out = SessionExporter.export(events, fmt=ExportFormat.TXT, target_language="es")
     assert "(00:00:01.000) [Bob] Hola mundo." in txt_out
+
+
+def test_multilingual_utf8_export():
+    """Verify Russian (Cyrillic) and Chinese (CJK) characters export without corruption."""
+    ru_event = CaptionEvent(
+        id="ru-1",
+        room_id="room-ru",
+        target_language="ru",
+        text="Добро пожаловать на пленарное заседание по распределенным системам.",
+        is_final=True,
+        start_ms=1000,
+        end_ms=4500,
+        speaker="Д-р Сара Чен",
+    )
+    zh_event = CaptionEvent(
+        id="zh-1",
+        room_id="room-zh",
+        target_language="zh",
+        text="欢迎大家参加关于分布式系统的主题演讲。",
+        is_final=True,
+        start_ms=1000,
+        end_ms=4500,
+        speaker="陈博士",
+    )
+
+    ru_srt = SessionExporter.export([ru_event], fmt=ExportFormat.SRT, target_language="ru")
+    assert "Д-р Сара Чен: Добро пожаловать на пленарное заседание по распределенным системам." in ru_srt
+    # Test byte encoding/decoding as UTF-8
+    assert ru_srt.encode("utf-8").decode("utf-8") == ru_srt
+
+    zh_vtt = SessionExporter.export([zh_event], fmt=ExportFormat.VTT, target_language="zh")
+    assert "<v 陈博士>欢迎大家参加关于分布式系统的主题演讲。" in zh_vtt
+    assert zh_vtt.encode("utf-8").decode("utf-8") == zh_vtt
+

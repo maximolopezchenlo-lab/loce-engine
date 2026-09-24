@@ -14,6 +14,7 @@ from typing import Optional
 from core.engine.base import (
     AudioChunk,
     CaptionEvent,
+    SUPPORTED_LANGUAGES,
     TranscriptionConfig,
     TranscriptionProvider,
 )
@@ -76,7 +77,7 @@ class RoomSession:
         self.room_id = room_id
         self.name = name
         self.source_language = source_language
-        self.target_languages = target_languages or ["es", "en", "pt"]
+        self.target_languages = target_languages or list(SUPPORTED_LANGUAGES)
         self.provider_type = provider_type
         self.sample_rate = sample_rate
         self.chunk_ms = chunk_ms
@@ -154,7 +155,7 @@ class RoomService:
                 room_id=room_id,
                 name=name or f"Room {room_id.upper()}",
                 source_language=source_language,
-                target_languages=target_languages or ["es", "en", "pt"],
+                target_languages=target_languages or list(SUPPORTED_LANGUAGES),
                 provider_type=chosen_provider,
             )
             self._rooms[room_id] = room

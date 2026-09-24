@@ -9,6 +9,9 @@ from typing import Awaitable, Callable, Optional, Sequence
 from pydantic import BaseModel, Field
 
 
+SUPPORTED_LANGUAGES = ["en", "es", "pt", "fr", "de", "it", "ru", "zh"]
+
+
 class LanguagePair(str, Enum):
     EN_TO_ES = "en-es"
     ES_TO_EN = "es-en"
@@ -16,6 +19,11 @@ class LanguagePair(str, Enum):
     PT_TO_EN = "pt-en"
     ES_TO_PT = "es-pt"
     PT_TO_ES = "pt-es"
+    EN_TO_FR = "en-fr"
+    EN_TO_DE = "en-de"
+    EN_TO_IT = "en-it"
+    EN_TO_RU = "en-ru"
+    EN_TO_ZH = "en-zh"
     EN_TO_EN = "en-en"
     ES_TO_ES = "es-es"
     PT_TO_PT = "pt-pt"
@@ -39,8 +47,8 @@ class CaptionEvent(BaseModel):
 
     id: str = Field(..., description="Unique event identifier")
     room_id: str = Field(..., description="Target room identifier")
-    original_language: str = Field(default="en", description="Source audio language (e.g. 'en', 'es', 'pt')")
-    target_language: str = Field(default="es", description="Language of text (e.g. 'es', 'en', 'pt')")
+    original_language: str = Field(default="en", description="Source audio language (e.g. 'en', 'es', 'pt', etc.)")
+    target_language: str = Field(default="es", description="Language of text (e.g. 'es', 'en', 'pt', 'zh', 'ru', etc.)")
     text: str = Field(..., description="Translated caption text for target_language")
     original_text: Optional[str] = Field(default=None, description="Original language transcript")
     is_final: bool = Field(default=False, description="True if final segment, False if live partial")
@@ -59,9 +67,10 @@ class TranscriptionConfig(BaseModel):
 
     room_id: str
     source_language: str = "en"
-    target_languages: list[str] = Field(default_factory=lambda: ["es", "en", "pt"])
+    target_languages: list[str] = Field(default_factory=lambda: ["en", "es", "pt", "fr", "de", "it", "ru", "zh"])
     sample_rate: int = 16000
     chunk_ms: int = 200
+
     system_instruction: Optional[str] = None
     glossary_terms: list[str] = Field(default_factory=list)
     speaker_names: list[str] = Field(default_factory=list)

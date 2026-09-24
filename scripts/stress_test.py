@@ -1,7 +1,8 @@
 """High-Concurrency Multi-Room Benchmark & Stress Test for LOCE.
 
-Tests 10+ concurrent stages in parallel with trilingual streams (EN, ES, PT),
-measuring real-time throughput, event delivery, and P50/P95/P99 latency percentiles.
+Tests 30+ concurrent stages in parallel with global multilingual streams
+(EN, ES, PT, FR, DE, IT, RU, ZH), measuring real-time throughput, event delivery,
+and P50/P95/P99 latency percentiles across simultaneous WebSocket connections.
 """
 
 from __future__ import annotations
@@ -42,9 +43,9 @@ class StageMetrics:
         self.ingest_connected = False
         self.ingest_error: Optional[str] = None
 
-        # Captions received per language: {"es": 0, "en": 0, "pt": 0}
-        self.partials: Dict[str, int] = {"es": 0, "en": 0, "pt": 0}
-        self.finals: Dict[str, int] = {"es": 0, "en": 0, "pt": 0}
+        # Captions received per language: {"es": 0, "en": 0, "pt": 0, "zh": 0, "ru": 0}
+        self.partials: Dict[str, int] = {}
+        self.finals: Dict[str, int] = {}
         self.latencies_ms: List[float] = []
         self.viewer_errors: List[str] = []
         self.sample_texts: List[str] = []
@@ -162,31 +163,35 @@ def calculate_percentiles(values: List[float]) -> tuple[float, float, float]:
 
 
 async def run_benchmark(
-    num_rooms: int = 10,
-    duration_sec: float = 15.0,
+    num_rooms: int = 32,
+    duration_sec: float = 12.0,
     host: str = "127.0.0.1",
     port: int = 8000,
     chunk_ms: int = 200,
     sample_rate: int = 16000,
+    langs: Optional[List[str]] = None,
 ) -> None:
+    test_langs = langs or ["es", "en", "pt", "zh", "ru"]
     server_ws_url = f"ws://{host}:{port}"
     room_ids = [f"stage-{i+1}" for i in range(num_rooms)]
     metrics_map: Dict[str, StageMetrics] = {r: StageMetrics(r) for r in room_ids}
 
-    print("\n" + "=" * 80)
-    print(f"🚀 LOCE HIGH-CONCURRENCY MULTI-ROOM BENCHMARK (STRESS TEST)")
+    total_connections = num_rooms + (num_rooms * len(test_langs))
+
+    print("\n" + "=" * 96)
+    print(f"🚀 LOCE HIGH-CONCURRENCY MULTI-ROOM BENCHMARK (NERDEARLA SCALE)")
     print(f"   Target Server  : {server_ws_url}")
     print(f"   Rooms/Stages   : {num_rooms} concurrent ({room_ids[0]} ... {room_ids[-1]})")
-    print(f"   Languages      : ES, EN, PT (3 concurrent listener WebSockets per stage)")
+    print(f"   Languages      : {', '.join(l.upper() for l in test_langs)} ({len(test_langs)} listeners per stage)")
     print(f"   Duration       : {duration_sec}s per stage")
     print(f"   Audio Spec     : 16kHz PCM 16-bit mono ({chunk_ms}ms frames)")
-    print(f"   Total Streams  : {num_rooms} Ingest WS + {num_rooms * 3} Viewer WS = {num_rooms * 4} active WebSockets")
-    print("=" * 80 + "\n")
+    print(f"   Total Streams  : {num_rooms} Ingest WS + {num_rooms * len(test_langs)} Viewer WS = {total_connections} active WebSockets")
+    print("=" * 96 + "\n")
 
-    # 1. Start trilingual viewers first so they catch initial connection and streaming
+    # 1. Start multilingual viewers first
     viewer_tasks = []
     for r in room_ids:
-        for lang in ["es", "en", "pt"]:
+        for lang in test_langs:
             viewer_tasks.append(
                 asyncio.create_task(
                     viewer_worker(
@@ -200,7 +205,7 @@ async def run_benchmark(
             )
 
     # Allow viewers to establish connections
-    await asyncio.sleep(0.8)
+    await asyncio.sleep(1.0)
 
     # 2. Start audio ingest workers simultaneously across all rooms
     ingest_tasks = [
@@ -224,54 +229,49 @@ async def run_benchmark(
     await asyncio.gather(*viewer_tasks)
     total_benchmark_time = time.time() - benchmark_start
 
-
     # 3. Compile and print results table
-    print("\n" + "=" * 92)
+    print("\n" + "=" * 96)
     print("📊 MULTI-STAGE CONCURRENT PERFORMANCE MATRIX")
-    print("=" * 92)
-    header = f"{'STAGE':<10} | {'AUDIO (KB)':<10} | {'PARTIALS (ES/EN/PT)':<21} | {'FINALS (ES/EN/PT)':<19} | {'P50 (ms)':<9} | {'P95 (ms)':<9} | {'STATUS':<8}"
+    print("=" * 96)
+    header = f"{'STAGE':<10} | {'AUDIO (KB)':<10} | {'PARTIALS':<12} | {'FINALS':<10} | {'P50 (ms)':<9} | {'P95 (ms)':<9} | {'STATUS':<8}"
     print(header)
-    print("-" * 92)
+    print("-" * 96)
 
     all_latencies: List[float] = []
     total_audio_bytes = 0
     total_partials = 0
     total_finals = 0
     healthy_stages = 0
+    lang_finals_agg: Dict[str, int] = {l: 0 for l in test_langs}
 
     for room_id in room_ids:
         m = metrics_map[room_id]
         total_audio_bytes += m.bytes_sent
         all_latencies.extend(m.latencies_ms)
 
-        part_es = m.partials.get("es", 0)
-        part_en = m.partials.get("en", 0)
-        part_pt = m.partials.get("pt", 0)
-        total_partials += (part_es + part_en + part_pt)
+        part_count = sum(m.partials.values())
+        fin_count = sum(m.finals.values())
+        total_partials += part_count
+        total_finals += fin_count
 
-        fin_es = m.finals.get("es", 0)
-        fin_en = m.finals.get("en", 0)
-        fin_pt = m.finals.get("pt", 0)
-        total_finals += (fin_es + fin_en + fin_pt)
+        for l in test_langs:
+            lang_finals_agg[l] += m.finals.get(l, 0)
 
         p50, p95, _ = calculate_percentiles(m.latencies_ms)
         kb_sent = m.bytes_sent / 1024.0
 
-        is_healthy = m.ingest_connected and (fin_es + fin_en + fin_pt > 0)
+        is_healthy = m.ingest_connected and (fin_count > 0)
         if is_healthy:
             healthy_stages += 1
             status_label = "✅ PASS"
         else:
             status_label = "❌ FAIL"
 
-        part_str = f"{part_es:>2}/{part_en:>2}/{part_pt:>2}"
-        fin_str = f"{fin_es:>2}/{fin_en:>2}/{fin_pt:>2}"
-
         print(
-            f"{room_id:<10} | {kb_sent:>8.1f}KB | {part_str:^21} | {fin_str:^19} | {p50:>7.2f}ms | {p95:>7.2f}ms | {status_label:<8}"
+            f"{room_id:<10} | {kb_sent:>8.1f}KB | {part_count:>12} | {fin_count:>10} | {p50:>7.2f}ms | {p95:>7.2f}ms | {status_label:<8}"
         )
 
-    print("-" * 92)
+    print("-" * 96)
     overall_p50, overall_p95, overall_p99 = calculate_percentiles(all_latencies)
     throughput_kb_s = (total_audio_bytes / 1024.0) / max(0.1, total_benchmark_time)
     events_per_sec = (total_partials + total_finals) / max(0.1, total_benchmark_time)
@@ -279,21 +279,24 @@ async def run_benchmark(
 
     print(f"\n📈 OVERALL AGGREGATED METRICS:")
     print(f"  • Concurrent Rooms Tested   : {num_rooms}")
-    print(f"  • Active WebSocket Channels : {num_rooms * 4} simultaneous connections")
+    print(f"  • Active WebSocket Channels : {total_connections} simultaneous connections")
     print(f"  • Duration                  : {total_benchmark_time:.2f}s total run")
     print(f"  • Audio Ingestion Throughput: {throughput_kb_s:.2f} KB/s ({total_audio_bytes / 1024.0:.1f} KB total)")
     print(f"  • Caption Event Throughput  : {events_per_sec:.1f} events/s ({total_partials} partials, {total_finals} finals)")
+    print(f"  • Finals by Language        : " + ", ".join(f"{l.upper()}={lang_finals_agg[l]}" for l in test_langs))
     print(f"  • P50 End-to-End Latency    : {overall_p50:.2f} ms")
     print(f"  • P95 End-to-End Latency    : {overall_p95:.2f} ms")
     print(f"  • P99 End-to-End Latency    : {overall_p99:.2f} ms")
     print(f"  • Multi-Room Success Rate   : {success_rate:.1f}% ({healthy_stages}/{num_rooms} stages passing)")
 
-    # Sample Trilingual Verifications
-    print("\n📝 SAMPLE DISPATCHED CAPTIONS (VERIFY TRILINGUAL ACCURACY):")
-    sample_stage = metrics_map[room_ids[0]]
-    for s in sample_stage.sample_texts[:3]:
-        print(f"    {s}")
-    print("=" * 92 + "\n")
+    # Sample Multilingual Verifications
+    print("\n📝 SAMPLE DISPATCHED CAPTIONS (VERIFY MULTILINGUAL ACCURACY):")
+    for room_id in room_ids[:2]:
+        sample_stage = metrics_map[room_id]
+        print(f"  [{room_id}]")
+        for s in sample_stage.sample_texts[:4]:
+            print(f"    {s}")
+    print("=" * 96 + "\n")
 
     if healthy_stages < num_rooms:
         sys.exit(1)
@@ -301,14 +304,21 @@ async def run_benchmark(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="LOCE Concurrency & Latency Stress Test")
-    parser.add_argument("--rooms", type=int, default=10, help="Number of concurrent stages (default: 10)")
-    parser.add_argument("--duration", type=float, default=15.0, help="Duration in seconds (default: 15.0)")
+    parser.add_argument("--rooms", type=int, default=32, help="Number of concurrent stages (default: 32)")
+    parser.add_argument("--duration", type=float, default=12.0, help="Duration in seconds (default: 12.0)")
     parser.add_argument("--host", type=str, default="127.0.0.1", help="Server host")
     parser.add_argument("--port", type=int, default=8000, help="Server port")
     parser.add_argument("--chunk-ms", type=int, default=200, help="Chunk size in ms")
     parser.add_argument("--sample-rate", type=int, default=16000, help="Sample rate in Hz")
+    parser.add_argument(
+        "--langs",
+        type=str,
+        default="es,en,pt,zh,ru",
+        help="Comma-separated target languages (default: es,en,pt,zh,ru)",
+    )
 
     args = parser.parse_args()
+    langs_list = [l.strip().lower() for l in args.langs.split(",") if l.strip()]
     asyncio.run(
         run_benchmark(
             num_rooms=args.rooms,
@@ -317,5 +327,6 @@ if __name__ == "__main__":
             port=args.port,
             chunk_ms=args.chunk_ms,
             sample_rate=args.sample_rate,
+            langs=langs_list,
         )
     )

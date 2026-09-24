@@ -346,53 +346,61 @@ export const AdminDashboard: React.FC = () => {
 
                         {/* OBS Overlays */}
                         <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center gap-1">
-                            <a
-                              href={`/overlay/${r.room_id}?lang=es`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[10px] font-semibold"
-                            >
-                              ES
-                            </a>
-                            <a
-                              href={`/overlay/${r.room_id}?lang=en`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[10px] font-semibold"
-                            >
-                              EN
-                            </a>
-                            <a
-                              href={`/overlay/${r.room_id}?lang=pt`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[10px] font-semibold"
-                            >
-                              PT
-                            </a>
+                          <div className="flex items-center flex-wrap gap-1 max-w-[130px]">
+                            {["es", "en", "pt", "fr", "de", "it", "ru", "zh"].map((l) => (
+                              <a
+                                key={l}
+                                href={`/overlay/${r.room_id}?lang=${l}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[10px] font-semibold uppercase"
+                                title={`OBS Overlay (${l.toUpperCase()})`}
+                              >
+                                {l}
+                              </a>
+                            ))}
                           </div>
                         </td>
 
                         {/* Exports */}
                         <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center gap-1">
-                            <a
-                              href={`/api/rooms/${r.room_id}/export/srt?lang=es`}
-                              download
-                              title="Export SRT (ES)"
-                              className="px-1.5 py-0.5 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white text-[10px]"
+                            <select
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  window.open(e.target.value, "_blank");
+                                  e.target.value = "";
+                                }
+                              }}
+                              className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px] border border-slate-700 outline-none cursor-pointer"
+                              defaultValue=""
+                              aria-label="Download SRT Subtitles"
                             >
-                              SRT
-                            </a>
-                            <a
-                              href={`/api/rooms/${r.room_id}/export/vtt?lang=pt`}
-                              download
-                              title="Export VTT (PT)"
-                              className="px-1.5 py-0.5 rounded bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white text-[10px]"
+                              <option value="" disabled>SRT ▼</option>
+                              {["es", "en", "pt", "fr", "de", "it", "ru", "zh"].map((l) => (
+                                <option key={l} value={`/api/rooms/${r.room_id}/export/srt?lang=${l}`}>
+                                  {l.toUpperCase()} (.srt)
+                                </option>
+                              ))}
+                            </select>
+                            <select
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  window.open(e.target.value, "_blank");
+                                  e.target.value = "";
+                                }
+                              }}
+                              className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px] border border-slate-700 outline-none cursor-pointer"
+                              defaultValue=""
+                              aria-label="Download VTT Subtitles"
                             >
-                              VTT
-                            </a>
+                              <option value="" disabled>VTT ▼</option>
+                              {["es", "en", "pt", "fr", "de", "it", "ru", "zh"].map((l) => (
+                                <option key={l} value={`/api/rooms/${r.room_id}/export/vtt?lang=${l}`}>
+                                  {l.toUpperCase()} (.vtt)
+                                </option>
+                              ))}
+                            </select>
                           </div>
                         </td>
 
@@ -525,37 +533,47 @@ export const AdminDashboard: React.FC = () => {
                         </button>
 
                         <div className="flex items-center gap-1">
-                          <a
-                            href={`/overlay/${r.room_id}?lang=es`}
-                            target="_blank"
-                            rel="noreferrer"
+                          <select
                             onClick={(e) => e.stopPropagation()}
-                            className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[11px] font-medium text-slate-300 hover:text-white"
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                window.open(e.target.value, "_blank");
+                                e.target.value = "";
+                              }
+                            }}
+                            className="px-1.5 py-1 rounded bg-slate-800 text-slate-300 text-[11px] border border-slate-700 outline-none cursor-pointer"
+                            defaultValue=""
+                            aria-label="Open OBS Overlay"
                           >
-                            ES
-                          </a>
-                          <a
-                            href={`/overlay/${r.room_id}?lang=pt`}
-                            target="_blank"
-                            rel="noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[11px] font-medium text-slate-300 hover:text-white"
-                          >
-                            PT
-                          </a>
+                            <option value="" disabled>Overlay ▼</option>
+                            {["es", "en", "pt", "fr", "de", "it", "ru", "zh"].map((l) => (
+                              <option key={l} value={`/overlay/${r.room_id}?lang=${l}`}>
+                                {l.toUpperCase()} Overlay
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1">
-                        <a
-                          href={`/api/rooms/${r.room_id}/export/srt?lang=es`}
-                          download
-                          onClick={(e) => e.stopPropagation()}
-                          className="p-1.5 rounded hover:bg-slate-800 text-slate-400 hover:text-white"
-                          title="Export SRT"
+                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        <select
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              window.open(e.target.value, "_blank");
+                              e.target.value = "";
+                            }
+                          }}
+                          className="px-1.5 py-1 rounded bg-slate-800 text-slate-300 text-[11px] border border-slate-700 outline-none cursor-pointer"
+                          defaultValue=""
+                          aria-label="Download Subtitles"
                         >
-                          <Download className="w-3.5 h-3.5" />
-                        </a>
+                          <option value="" disabled>Export ▼</option>
+                          {["es", "en", "pt", "fr", "de", "it", "ru", "zh"].map((l) => (
+                            <option key={l} value={`/api/rooms/${r.room_id}/export/srt?lang=${l}`}>
+                              {l.toUpperCase()} (.srt)
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
                   </div>
