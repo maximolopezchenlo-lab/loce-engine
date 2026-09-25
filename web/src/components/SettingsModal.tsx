@@ -19,6 +19,7 @@ import {
   ProviderMode,
   getResolvedBackendUrl,
 } from "../utils/config";
+import { LoceLogo } from "./LoceLogo";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -88,13 +89,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/90">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
-              {isOnboarding ? (
-                <Sparkles className="w-5 h-5 text-indigo-400 animate-pulse" />
-              ) : (
-                <Cpu className="w-5 h-5 text-indigo-400" />
-              )}
-            </div>
+            <LoceLogo size={38} showText={false} animate={isOnboarding} />
             <div>
               <h2
                 id="settings-modal-title"

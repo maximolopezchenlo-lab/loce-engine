@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/loce_logo.jpg" alt="LiveVoice Open-Caption Engine (LOCE) Logo" width="220" style="border-radius: 28px; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);" />
+</p>
+
 # LiveVoice Open-Caption Engine (LOCE)
 
 *Distributed, Real-Time Octalingual Captioning & Translation Engine for High-Concurrency Tech Conferences.*

@@ -14,6 +14,7 @@ import {
 import { useCaptionStream } from "../hooks/useCaptionStream";
 import { RoomSummary } from "../types";
 import { getApiUrl } from "../utils/config";
+import { LoceLogo } from "./LoceLogo";
 
 interface AudienceViewProps {
   initialRoomId?: string;
@@ -149,21 +150,13 @@ export const AudienceView: React.FC<AudienceViewProps> = ({
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
           {/* Brand & Room Selector */}
           <div className="flex items-center justify-between sm:justify-start gap-2.5">
-            <div className="flex items-center gap-2">
-              <span className={`p-2 rounded-xl shadow-lg transition-colors ${
-                isHighContrast
-                  ? "bg-yellow-300 text-black font-extrabold shadow-yellow-300/20"
-                  : isLight
-                  ? "bg-indigo-700 text-white shadow-indigo-600/20"
-                  : "bg-indigo-600 text-white shadow-indigo-600/30"
-              }`}>
-                <Radio className="w-4 h-4 sm:w-5 sm:h-5 animate-pulse" />
-              </span>
-              <div>
-                <h1 className="text-sm sm:text-base md:text-lg font-bold tracking-tight">LiveVoice LOCE</h1>
-                <p className="text-[10px] sm:text-[11px] opacity-70">Simultaneous Live Transcription</p>
-              </div>
-            </div>
+            <LoceLogo
+              size={34}
+              showText={true}
+              showSubtitle={true}
+              animate={connectionState === "connected"}
+              theme={isHighContrast ? "high-contrast" : isLight ? "light" : "dark"}
+            />
 
             <div className={`h-6 w-px hidden sm:block ${isLight ? "bg-slate-200" : "bg-slate-800"}`} />
 

@@ -25,6 +25,7 @@ import {
 import { RoomSummary } from "../types";
 import { LiveAudioBroadcaster } from "./LiveAudioBroadcaster";
 import { getApiUrl } from "../utils/config";
+import { LoceLogo } from "./LoceLogo";
 
 interface AdminDashboardProps {
   onOpenSettings?: () => void;
@@ -295,14 +296,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onOpenSettings }
         {/* Header */}
         <div className="flex flex-col gap-4 border-b border-slate-800 pb-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight flex items-center gap-3">
-                <Activity className="w-7 h-7 text-indigo-500" />
-                LOCE Production & Orchestration Dashboard
-              </h1>
-              <p className="text-sm text-slate-400 mt-1">
-                Multi-room audio ingestion, Gemini Live cloud, and on-premise Gemma 4 inference monitoring.
-              </p>
+            <div className="flex items-center gap-4">
+              <LoceLogo size={46} showText={false} animate={true} />
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2.5">
+                  <span className="bg-gradient-to-r from-cyan-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent font-mono tracking-tight">
+                    LOCE
+                  </span>
+                  <span>Production & Orchestration Dashboard</span>
+                </h1>
+                <p className="text-sm text-slate-400 mt-0.5">
+                  Multi-room audio ingestion, Gemini Live cloud, and on-premise Gemma 4 inference monitoring.
+                </p>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               {onOpenSettings && (
