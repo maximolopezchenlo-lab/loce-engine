@@ -18,6 +18,7 @@ router = APIRouter()
 
 
 @router.websocket("/ws/ingest/{room_id}")
+@router.websocket("/api/rooms/{room_id}/ingest")
 async def websocket_audio_ingest(
     websocket: WebSocket,
     room_id: str,

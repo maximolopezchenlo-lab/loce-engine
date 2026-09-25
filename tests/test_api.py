@@ -150,3 +150,14 @@ def test_dynamic_api_key_and_provider_injection_ws(client: TestClient):
         assert init_msg["type"] == "init"
         assert init_msg["room_id"] == room_id
 
+
+def test_api_rooms_ingest_alias_ws(client: TestClient):
+    """Verify /api/rooms/{room_id}/ingest WebSocket alias accepts connections and audio chunks."""
+    room_id = "multicast-alias-stage"
+
+    with client.websocket_connect(f"/api/rooms/{room_id}/ingest") as ws:
+        pcm_chunk = b"\x00\x01" * 3200
+        for _ in range(4):
+            ws.send_bytes(pcm_chunk)
+
+

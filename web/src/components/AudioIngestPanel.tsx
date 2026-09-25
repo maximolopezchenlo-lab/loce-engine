@@ -40,6 +40,7 @@ export const AudioIngestPanel: React.FC<AudioIngestPanelProps> = ({
     seekFile,
   } = useAudioIngest({
     initialRoomId: selectedRoomId || (rooms.length > 0 ? rooms[0].room_id : "main-stage"),
+    activeRooms: rooms,
   });
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -59,7 +60,7 @@ export const AudioIngestPanel: React.FC<AudioIngestPanelProps> = ({
 
   // Sync external selectedRoomId if user clicks room table
   React.useEffect(() => {
-    if (selectedRoomId && selectedRoomId !== state.roomId) {
+    if (selectedRoomId && selectedRoomId !== state.roomId && state.roomId !== "ALL_ROOMS") {
       setRoomId(selectedRoomId);
     }
   }, [selectedRoomId, state.roomId, setRoomId]);
@@ -116,10 +117,17 @@ export const AudioIngestPanel: React.FC<AudioIngestPanelProps> = ({
         {/* Live Status Badge */}
         <div className="flex items-center gap-2 self-start sm:self-auto">
           {state.status === "STREAMING LIVE" ? (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-500/50 shadow-sm shadow-emerald-900/50">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              STREAMING LIVE
-            </span>
+            state.roomId === "ALL_ROOMS" ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-950/80 text-amber-300 border border-amber-500/50 shadow-sm shadow-amber-900/50">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                MULTICAST LIVE ({state.activeSocketsCount} SALAS)
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-500/50 shadow-sm shadow-emerald-900/50">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                STREAMING LIVE
+              </span>
+            )
           ) : state.status === "CONNECTING" ? (
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-yellow-950/80 text-yellow-400 border border-yellow-500/50">
               <RefreshCw className="w-3 h-3 animate-spin" />
@@ -157,12 +165,21 @@ export const AudioIngestPanel: React.FC<AudioIngestPanelProps> = ({
             onChange={(e) => handleRoomChange(e.target.value)}
             className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none disabled:opacity-50"
           >
+            <option value="ALL_ROOMS" className="font-bold text-amber-300 bg-slate-950">
+              🌐 Todas las Salas (Broadcast Concurrente 32x)
+            </option>
             {rooms.map((r) => (
               <option key={r.room_id} value={r.room_id}>
                 {r.name} ({r.room_id})
               </option>
             ))}
           </select>
+          {state.roomId === "ALL_ROOMS" && (
+            <p className="text-[11px] text-amber-400/90 mt-1.5 flex items-center gap-1 font-medium">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+              Multicast concurrente: el audio se replicará en tiempo real hacia todas las salas activas.
+            </p>
+          )}
         </div>
 
         {/* Ingest Mode Toggle */}

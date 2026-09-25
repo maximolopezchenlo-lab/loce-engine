@@ -23,7 +23,7 @@ import {
   Settings,
 } from "lucide-react";
 import { RoomSummary } from "../types";
-import { AudioIngestPanel } from "./AudioIngestPanel";
+import { LiveAudioBroadcaster } from "./LiveAudioBroadcaster";
 import { getApiUrl } from "../utils/config";
 
 interface AdminDashboardProps {
@@ -351,7 +351,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onOpenSettings }
 
         {/* Live Audio Broadcaster Panel (Microphone & Audio File Ingest) */}
         <section>
-          <AudioIngestPanel
+          <LiveAudioBroadcaster
             rooms={rooms}
             selectedRoomId={selectedRoomId}
             onRoomSelect={(id) => setSelectedRoomId(id)}

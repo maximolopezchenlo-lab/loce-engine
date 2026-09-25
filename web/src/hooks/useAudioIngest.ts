@@ -24,6 +24,7 @@ export interface AudioIngestState {
   chunksSent: number;
   durationLive: number; // seconds streaming
   error: string | null;
+  activeSocketsCount: number;
 
   // File-specific state
   fileName: string | null;
@@ -36,6 +37,7 @@ export interface UseAudioIngestOptions {
   initialRoomId?: string;
   chunkMs?: number; // default 200ms
   targetSampleRate?: number; // default 16000
+  activeRooms?: (string | { room_id: string })[];
 }
 
 /**
@@ -118,9 +120,19 @@ export function useAudioIngest(options: UseAudioIngestOptions = {}) {
   const [fileDuration, setFileDuration] = useState(0);
   const [fileProgress, setFileProgress] = useState(0);
   const [isPlayingFile, setIsPlayingFile] = useState(false);
+  const [activeSocketsCount, setActiveSocketsCount] = useState(0);
 
   // References
   const wsRef = useRef<WebSocket | null>(null);
+  const socketsRef = useRef<WebSocket[]>([]);
+  const activeRoomsRef = useRef<(string | { room_id: string })[]>(options.activeRooms || []);
+
+  useEffect(() => {
+    if (options.activeRooms) {
+      activeRoomsRef.current = options.activeRooms;
+    }
+  }, [options.activeRooms]);
+
   const audioCtxRef = useRef<AudioContext | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const scriptNodeRef = useRef<ScriptProcessorNode | null>(null);
@@ -151,7 +163,7 @@ export function useAudioIngest(options: UseAudioIngestOptions = {}) {
       if (cfg.providerMode) {
         params.set("provider", cfg.providerMode);
       }
-      return `${baseUrl}/ws/ingest/${encodeURIComponent(targetRoom)}?${params.toString()}`;
+      return `${baseUrl}/api/rooms/${encodeURIComponent(targetRoom)}/ingest?${params.toString()}`;
     },
     [targetSampleRate]
   );
@@ -190,7 +202,7 @@ export function useAudioIngest(options: UseAudioIngestOptions = {}) {
     setIsPlayingFile(false);
   }, []);
 
-  // Full stop & disconnect
+  // Full stop & disconnect all open sockets
   const stopBroadcast = useCallback(() => {
     cleanupMic();
     cleanupFileTimer();
@@ -198,6 +210,17 @@ export function useAudioIngest(options: UseAudioIngestOptions = {}) {
     if (liveTimerRef.current) {
       clearInterval(liveTimerRef.current);
       liveTimerRef.current = null;
+    }
+
+    if (socketsRef.current.length > 0) {
+      for (const ws of socketsRef.current) {
+        try {
+          ws.close();
+        } catch (err) {
+          console.error("Error closing WebSocket:", err);
+        }
+      }
+      socketsRef.current = [];
     }
 
     if (wsRef.current) {
@@ -209,55 +232,110 @@ export function useAudioIngest(options: UseAudioIngestOptions = {}) {
       wsRef.current = null;
     }
 
+    setActiveSocketsCount(0);
     setVolumeLevel(0);
     setStatus("DISCONNECTED");
   }, [cleanupMic, cleanupFileTimer]);
 
-  // Connect WebSocket to /ws/ingest/:roomId
-  const connectWebSocket = useCallback(
-    (targetRoom: string): Promise<WebSocket> => {
-      return new Promise((resolve, reject) => {
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-          resolve(wsRef.current);
-          return;
+  // Connect WebSocket(s) to /api/rooms/:roomId/ingest
+  const connectWebSockets = useCallback(
+    async (targetRoom: string): Promise<WebSocket[]> => {
+      const existingOpen = socketsRef.current.filter((ws) => ws.readyState === WebSocket.OPEN);
+      if (existingOpen.length > 0) {
+        return existingOpen;
+      }
+
+      setStatus("CONNECTING");
+      setError(null);
+
+      const resolvedRooms: string[] =
+        targetRoom === "ALL_ROOMS"
+          ? activeRoomsRef.current.length > 0
+            ? activeRoomsRef.current.map((r) => (typeof r === "string" ? r : r.room_id))
+            : ["main-stage", "track-1", "track-2"]
+          : [targetRoom];
+
+      const uniqueRooms = Array.from(new Set(resolvedRooms)).filter(
+        (id) => Boolean(id) && id !== "ALL_ROOMS"
+      );
+
+      if (uniqueRooms.length === 0) {
+        uniqueRooms.push("main-stage");
+      }
+
+      const openedSockets: WebSocket[] = [];
+
+      const connectPromises = uniqueRooms.map((r) => {
+        return new Promise<WebSocket>((resolve, reject) => {
+          const url = getWsIngestUrl(r);
+          const ws = new WebSocket(url);
+          ws.binaryType = "arraybuffer";
+
+          ws.onopen = () => {
+            openedSockets.push(ws);
+            resolve(ws);
+          };
+
+          ws.onerror = (e) => {
+            console.error(`WebSocket Ingest Error for room '${r}':`, e);
+            if (uniqueRooms.length === 1) {
+              reject(new Error(`WebSocket connection failed for room ${r}`));
+            } else {
+              resolve(ws);
+            }
+          };
+
+          ws.onclose = () => {
+            socketsRef.current = socketsRef.current.filter((s) => s !== ws);
+            setActiveSocketsCount(
+              socketsRef.current.filter((s) => s.readyState === WebSocket.OPEN).length
+            );
+            if (socketsRef.current.length === 0) {
+              setStatus((currentStatus) =>
+                currentStatus === "STREAMING LIVE" ? "DISCONNECTED" : currentStatus
+              );
+            }
+          };
+        });
+      });
+
+      try {
+        await Promise.allSettled(connectPromises);
+        const validSockets = openedSockets.filter((s) => s.readyState === WebSocket.OPEN);
+
+        if (validSockets.length === 0) {
+          throw new Error("No se pudo conectar a ninguna sala de ingesta.");
         }
 
-        setStatus("CONNECTING");
-        setError(null);
-
-        const url = getWsIngestUrl(targetRoom);
-        const ws = new WebSocket(url);
-        ws.binaryType = "arraybuffer";
-
-        ws.onopen = () => {
-          wsRef.current = ws;
-          setStatus("STREAMING LIVE");
-          resolve(ws);
-        };
-
-        ws.onerror = (e) => {
-          console.error("WebSocket Ingest Error:", e);
-          setError("Failed to connect to audio ingest endpoint.");
-          setStatus("ERROR");
-          reject(new Error("WebSocket connection failed"));
-        };
-
-        ws.onclose = () => {
-          if (status === "STREAMING LIVE") {
-            setStatus("DISCONNECTED");
-          }
-        };
-      });
+        socketsRef.current = validSockets;
+        wsRef.current = validSockets[0] || null;
+        setActiveSocketsCount(validSockets.length);
+        setStatus("STREAMING LIVE");
+        return validSockets;
+      } catch (err: unknown) {
+        console.error("Error connecting WebSockets:", err);
+        setError("Error al conectar con el servidor de ingesta.");
+        setStatus("ERROR");
+        throw err;
+      }
     },
-    [getWsIngestUrl, status]
+    [getWsIngestUrl]
   );
 
-  // Send a raw Int16 PCM chunk over WebSocket
+  // Send a raw Int16 PCM chunk over all active WebSockets
   const sendPcmChunk = useCallback((chunk: Int16Array) => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(chunk.buffer);
-      setBytesSent((prev) => prev + chunk.byteLength);
-      setChunksSent((prev) => prev + 1);
+    const openSockets = socketsRef.current.filter((ws) => ws.readyState === WebSocket.OPEN);
+    if (openSockets.length > 0) {
+      const buffer = chunk.buffer;
+      for (const ws of openSockets) {
+        try {
+          ws.send(buffer);
+        } catch (err) {
+          console.error("Error sending PCM chunk to socket:", err);
+        }
+      }
+      setBytesSent((prev) => prev + chunk.byteLength * openSockets.length);
+      setChunksSent((prev) => prev + openSockets.length);
     }
   }, []);
 
@@ -266,7 +344,7 @@ export function useAudioIngest(options: UseAudioIngestOptions = {}) {
     try {
       setError(null);
       const audioCtx = getAudioContext();
-      const ws = await connectWebSocket(roomId);
+      await connectWebSockets(roomId);
 
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -300,11 +378,7 @@ export function useAudioIngest(options: UseAudioIngestOptions = {}) {
         while (acc.length >= samplesPerChunk) {
           const chunkSamples = acc.splice(0, samplesPerChunk);
           const chunkInt16 = new Int16Array(chunkSamples);
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(chunkInt16.buffer);
-            setBytesSent((prev) => prev + chunkInt16.byteLength);
-            setChunksSent((prev) => prev + 1);
-          }
+          sendPcmChunk(chunkInt16);
         }
       };
 
@@ -326,7 +400,7 @@ export function useAudioIngest(options: UseAudioIngestOptions = {}) {
       setStatus("ERROR");
       stopBroadcast();
     }
-  }, [getAudioContext, connectWebSocket, roomId, targetSampleRate, samplesPerChunk, stopBroadcast]);
+  }, [getAudioContext, connectWebSockets, roomId, targetSampleRate, samplesPerChunk, sendPcmChunk, stopBroadcast]);
 
   // Decode ArrayBuffer into 16kHz Int16Array mono
   const decodeAndProcessAudio = useCallback(
@@ -424,7 +498,7 @@ export function useAudioIngest(options: UseAudioIngestOptions = {}) {
     }
 
     try {
-      await connectWebSocket(roomId);
+      await connectWebSockets(roomId);
       setIsPlayingFile(true);
       setStatus("STREAMING LIVE");
 
@@ -464,7 +538,7 @@ export function useAudioIngest(options: UseAudioIngestOptions = {}) {
       console.error("File stream error:", err);
       setStatus("ERROR");
     }
-  }, [connectWebSocket, roomId, samplesPerChunk, chunkMs, sendPcmChunk, fileDuration, cleanupFileTimer]);
+  }, [connectWebSockets, roomId, samplesPerChunk, chunkMs, sendPcmChunk, fileDuration, cleanupFileTimer]);
 
   // Pause file playback
   const pauseFile = useCallback(() => {
@@ -511,6 +585,7 @@ export function useAudioIngest(options: UseAudioIngestOptions = {}) {
       chunksSent,
       durationLive,
       error,
+      activeSocketsCount,
       fileName,
       fileDuration,
       fileProgress,
