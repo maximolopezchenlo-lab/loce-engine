@@ -1,21 +1,27 @@
-<p align="center">
-  <img src="docs/assets/loce_logo.jpg" alt="LiveVoice Open-Caption Engine (LOCE) Logo" width="220" style="border-radius: 28px; box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);" />
-</p>
+<div align="center">
 
-# LiveVoice Open-Caption Engine (LOCE)
+  <img src="./docs/assets/loce_logo.jpg" alt="LiveVoice Open-Caption Engine (LOCE) Logo" width="220" />
 
-*Distributed, Real-Time Octalingual Captioning & Translation Engine for High-Concurrency Tech Conferences.*
+  # LiveVoice Open-Caption Engine (LOCE)
 
-[![Release: v1.0.0](https://img.shields.io/badge/Release-v1.0.0-blue.svg)](https://github.com/maximolopezchenlo-lab/loce-engine/releases)
-[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![React 19](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev/)
-[![Tests: 38/38 Passing](https://img.shields.io/badge/Tests-38%2F38%20Passing-brightgreen.svg)]()
-[![Architecture: Distributed Pub/Sub](https://img.shields.io/badge/Architecture-Distributed%20Pub%2FSub-blueviolet.svg)]()
-[![Latency: P95 < 12ms](https://img.shields.io/badge/Latency-P95%20%3C%2012ms-brightgreen.svg)]()
-[![Concurrency: 32 Stages Verified](https://img.shields.io/badge/Concurrency-32%20Stages%20Verified-brightgreen.svg)]()
-[![Languages: 8](https://img.shields.io/badge/Languages-EN%20%7C%20ES%20%7C%20PT%20%7C%20FR%20%7C%20DE%20%7C%20IT%20%7C%20RU%20%7C%20ZH-orange.svg)]()
-[![Inference: Gemini Live & Gemma 4](https://img.shields.io/badge/Inference-Gemini%20Live%20API%20%7C%20Gemma%204%20Local-purple.svg)]()
+  *Distributed, Real-Time Octalingual Captioning & Translation Engine for High-Concurrency Tech Conferences.*
+
+  <br/>
+
+  [![Release: v1.0.0](https://img.shields.io/badge/Release-v1.0.0-blue.svg)](https://github.com/maximolopezchenlo-lab/loce-engine/releases)
+  [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+  [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+  [![React 19](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev/)
+  [![Tests: 40/40 Passing](https://img.shields.io/badge/Tests-40%2F40%20Passing-brightgreen.svg)]()
+
+  [![Architecture: Distributed Pub/Sub](https://img.shields.io/badge/Architecture-Distributed%20Pub%2FSub-blueviolet.svg)]()
+  [![Latency: P95 < 12ms](https://img.shields.io/badge/Latency-P95%20%3C%2012ms-brightgreen.svg)]()
+  [![Concurrency: 32 Stages Verified](https://img.shields.io/badge/Concurrency-32%20Stages%20Verified-brightgreen.svg)]()
+
+  [![Languages: 8](https://img.shields.io/badge/Languages-EN%20%7C%20ES%20%7C%20PT%20%7C%20FR%20%7C%20DE%20%7C%20IT%20%7C%20RU%20%7C%20ZH-orange.svg)]()
+  [![Inference: Gemini Live & Gemma 4](https://img.shields.io/badge/Inference-Gemini%20Live%20API%20%7C%20Gemma%204%20Local-purple.svg)]()
+
+</div>
 
 ---
 
@@ -34,39 +40,39 @@ LOCE implementa un desacoplamiento estricto en capas independientes: **Ingesta d
 ```mermaid
 flowchart TD
     subgraph Ingestion["1. Capa de Ingesta de Audio (Edge / Speaker)"]
-        MIC["🎙️ Browser Live Mic\n(getUserMedia + AudioWorklet)"] -->|16kHz PCM 16-bit Mono| WS_INGEST["WebSocket Ingest\n(/ws/ingest/:roomId)"]
-        FILE["🎵 Local Audio File / Demo\n(Web Audio API Downsampling)"] -->|200ms Chunks (6400 B)| WS_INGEST
-        OBS_IN["📡 OBS / vMix / RTMP Ingest\n(Hardware Audio Mixer)"] -->|PCM Stream| WS_INGEST
+        MIC["🎙️ Browser Live Mic<br/>(getUserMedia + AudioWorklet)"] -->|"16kHz PCM 16-bit Mono"| WS_INGEST["WebSocket Ingest<br/>(/ws/ingest/:roomId)"]
+        FILE_IN["🎵 Local Audio File / Demo<br/>(Web Audio API Downsampling)"] -->|"200ms Chunks (6400 B)"| WS_INGEST
+        OBS_IN["📡 OBS / vMix / RTMP Ingest<br/>(Hardware Audio Mixer)"] -->|"PCM Stream"| WS_INGEST
     end
 
     subgraph Normalization["2. Normalización, Buffering & VAD"]
-        WS_INGEST --> RB["Circular RingBuffer\n(Thread-Safe, Fixed Capacity)"]
-        RB --> NORM["Audio Normalizer\n(Resampling + Stereo-to-Mono + RMS)"]
-        NORM --> VAD["Silero VAD / Frame Slicer\n(Silence Eviction & Voice Bursting)"]
+        WS_INGEST --> RB["Circular RingBuffer<br/>(Thread-Safe, Fixed Capacity)"]
+        RB --> NORM["Audio Normalizer<br/>(Resampling + Stereo-to-Mono + RMS)"]
+        NORM --> VAD["Silero VAD / Frame Slicer<br/>(Silence Eviction & Voice Bursting)"]
     end
 
     subgraph Inference["3. Pipeline de Inferencia Multilingüe Híbrida"]
-        VAD --> ENGINE{"TranscriptionProvider\n(Abstraction Layer)"}
-        ENGINE -->|Cloud TLS WebSocket| GEMINI["⚡ GeminiLiveProvider\n(Gemini Multimodal Live API\nBidiGenerateContent)"]
-        ENGINE -->|Local Edge HTTP / Stream| GEMMA["🔒 GemmaLocalProvider\n(Gemma 4 via Ollama / vLLM\n100% Air-Gapped)"]
-        ENGINE -->|Simulation / CI| MOCK["🧪 MockStreamingProvider\n(Deterministic Octalingual Engine)"]
+        VAD --> ENGINE{"TranscriptionProvider<br/>(Abstraction Layer)"}
+        ENGINE -->|"Cloud TLS WebSocket"| GEMINI["⚡ GeminiLiveProvider<br/>(Gemini Multimodal Live API - BidiGenerateContent)"]
+        ENGINE -->|"Local Edge HTTP / Stream"| GEMMA["🔒 GemmaLocalProvider<br/>(Gemma 4 via Ollama / vLLM - Air-Gapped)"]
+        ENGINE -->|"Simulation / CI"| MOCK["🧪 MockStreamingProvider<br/>(Deterministic Octalingual Engine)"]
         
-        GLOSSARY["📚 Technical Glossary Engine\n(Regex Replacements & Contextual Biasing)"] -.->|Inject Context| GEMINI
-        GLOSSARY -.->|Inject Context| GEMMA
+        GLOSSARY["📚 Technical Glossary Engine<br/>(Regex Replacements & Contextual Biasing)"] -.->|"Inject Context"| GEMINI
+        GLOSSARY -.->|"Inject Context"| GEMMA
     end
 
     subgraph Distribution["4. Message Bus Distribuido & Backpressure"]
-        GEMINI -->|Emit Multi-Lang Events| BROKER["PubSubBroker\n(Redis Cluster or Local In-Memory Fallback)"]
-        GEMMA -->|Emit Multi-Lang Events| BROKER
-        MOCK -->|Emit Multi-Lang Events| BROKER
+        GEMINI -->|"Emit Multi-Lang Events"| BROKER["PubSubBroker<br/>(Redis Cluster or Local In-Memory Fallback)"]
+        GEMMA -->|"Emit Multi-Lang Events"| BROKER
+        MOCK -->|"Emit Multi-Lang Events"| BROKER
         
-        BROKER --> BP["Smart Backpressure Queue per Subscriber\n(Drop old partials on congestion | NEVER drop finals)"]
+        BROKER --> BP["Smart Backpressure Queue per Subscriber<br/>(Drop old partials on congestion - NEVER drop finals)"]
     end
 
     subgraph Delivery["5. Capa de Visualización & Entrega"]
-        BP -->|WS /ws/stream/:roomId?lang=...| AUD["📱 Audience Web App (React 19)\n(8 Languages, WCAG AAA, Auto-scroll)"]
-        BP -->|WS /ws/stream/:roomId?lang=...| OBS["📺 OBS Studio / vMix Overlays\n(Transparent BG, Broadcast Typography)"]
-        BP -->|On-Demand HTTP GET| EXP["💾 Subtitle Exporters\n(SRT, WebVTT, TXT - Strict UTF-8)"]
+        BP -->|"WS /ws/stream/:roomId"| AUD["📱 Audience Web App (React 19)<br/>(8 Languages, WCAG AAA, Auto-scroll)"]
+        BP -->|"WS /ws/stream/:roomId"| OBS["📺 OBS Studio / vMix Overlays<br/>(Transparent BG, Broadcast Typography)"]
+        BP -->|"On-Demand HTTP GET"| EXP["💾 Subtitle Exporters<br/>(SRT, WebVTT, TXT - Strict UTF-8)"]
     end
 ```
 
